@@ -22,7 +22,6 @@
         .input-styled { border: 2px solid #cbd5e1; padding: 10px; border-radius: 6px; width: 100%; background: #f8fafc; color: #000000; font-weight: 500; box-sizing: border-box; -webkit-appearance: none; display: block; font-size: 14px; min-height: 44px; }
         input.input-styled:not(:placeholder-shown) { color: #000000 !important; }
         .grade-box { border: 2px solid #cbd5e1; padding: 10px; border-radius: 6px; width: 100%; background: #f8fafc; font-size: 16px; box-sizing: border-box; }
-        .grade-label { color: #94a3b8; }
         .grade-value { color: #000000; font-weight: 500; }
         .grid-row { display: grid; grid-template-columns: 1fr 1fr auto; align-items: center; gap: 10px; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; background: white; }
         .att-btn { border: 1px solid #cbd5e1; padding: 4px 6px; border-radius: 4px; font-size: 11px; }
@@ -30,20 +29,8 @@
             .max-w-xl { max-width: 1100px !important; display: grid !important; grid-template-columns: 200px 1fr; gap: 20px; align-items: start; }
             nav { flex-direction: column !important; border-bottom: none !important; background: #f1f5f9 !important; border-radius: 8px; }
             .nav-btn { text-align: left; border-bottom: none !important; border-left: 4px solid transparent !important; }
-            
-#nav1 { border-left-color:#ef4444 !important; }
-#nav2 { border-left-color:#f59e0b !important; }
-#nav3 { border-left-color:#10b981 !important; }
-#nav4 { border-left-color:#3b82f6 !important; }
-#nav5 { border-left-color:#9ca3af !important; }
-#nav6 { border-left-color:#d946ef !important; }
-#nav1.nav-active-tab { background:#fef2f2 !important; }
-#nav2.nav-active-tab { background:#fffbeb !important; }
-#nav3.nav-active-tab { background:#ecfdf5 !important; }
-#nav4.nav-active-tab { background:#eff6ff !important; }
-#nav5.nav-active-tab { background:#f3f4f6 !important; }
-#nav6.nav-active-tab { background:#fef6ff !important; }
-
+            #nav1 { border-left-color:#ef4444 !important; } #nav2 { border-left-color:#f59e0b !important; } #nav3 { border-left-color:#10b981 !important; }
+            #nav4 { border-left-color:#3b82f6 !important; } #nav5 { border-left-color:#9ca3af !important; } #nav6 { border-left-color:#d946ef !important; }
         }
     </style>
 </head>
@@ -73,7 +60,6 @@
                 <div class="flex gap-2">
                     <input type="text" id="stu-birth" class="input-styled" placeholder="生年月日(yyyy/mm/dd)" onfocus="(this.type='date')" onblur="(this.type='text')" onchange="document.getElementById('grade-result').innerText = window.calcGrade(this.value)">
                     <div id="display-grade" class="grade-box flex items-center">
-                        
                         <span id="grade-result" class="grade-value">-</span>
                     </div>
                 </div>
@@ -94,44 +80,23 @@
             </div>
 
             <div id="tab2" class="tab-content space-y-4"><div id="student-list" class="space-y-2"></div></div>
-            <div id="tab3" class="tab-content space-y-4"><input type="date" id="cal-today" class="input-styled font-bold" style="color: #000 !important;"><div id="today-list" class="space-y-4 pt-2"></div></div>
+            <div id="tab3" class="tab-content space-y-4"><input type="date" id="cal-today" class="input-styled font-bold" style="color: #000 !important;"><div id="today-list" class="space-y-3 pt-2"></div></div>
             <div id="tab4" class="tab-content space-y-4"><div id="makeup-list" class="space-y-3 pt-2"></div></div>
             <div id="tab5" class="tab-content space-y-4"><select id="search-box" class="input-styled"><option value="">名前を選択してください...</option></select><div id="detail-view" class="p-4 border rounded bg-slate-50 text-sm">生徒を選択してください</div></div>
-            
             <div id="tab6" class="tab-content space-y-4">
                 <h2 class="font-bold border-b pb-2">体験授業一覧</h2>
                 <div id="trial-list" class="space-y-2"></div>
                 <h2 class="font-bold border-b pb-2 mt-6">新規体験登録</h2>
                 <input type="text" id="trial-name" placeholder="氏名" class="input-styled">
-                <select id="trial-grade" class="input-styled"><option value="小1">小1</option><option value="小2">小2</option><option value="小3">小3</option><option value="小4">小4</option><option value="小5">小5</option><option value="小6">小6</option><option value="中1">中1</option><option value="中2">中2</option><option value="中3">中3</option><option value="高1">高1</option><option value="高2">高2</option><option value="高3">高3</option><option value="既卒">既卒</option></select>
-                <select id="trial-subject" class="input-styled">
-    <option>算数</option><option>数学</option><option>英語</option>
-    <option>国語</option><option>理科</option><option>社会</option><option>情報</option><option>物理</option><option>化学</option><option>生物</option>
-</select>
-<input type="date" id="trial-date" class="input-styled">
-                <select id="trial-time" class="input-styled">
-                    <option>①17:00</option><option>②18:10</option><option>③19:20</option><option>④20:30</option>
-                    <option>⑤13:40</option><option>⑥14:50</option><option>⑦16:00</option><option>⑧17:30</option>
-                    <option>⑨18:40</option><option>⑩19:50</option>
-                </select>
+                <input type="text" id="trial-grade" placeholder="学年" class="input-styled">
+                <input type="date" id="trial-date" class="input-styled">
+                <select id="trial-time" class="input-styled"><option>①17:00</option><option>②18:10</option><option>③19:20</option><option>④20:30</option><option>⑤13:40</option><option>⑥14:50</option><option>⑦16:00</option><option>⑧17:30</option><option>⑨18:40</option><option>⑩19:50</option></select>
                 <button id="save-trial" class="btn-main">体験予約を保存</button>
             </div>
         </div>
     </div>
 
     <script>
-function normalizeGrade(g){
- if(!g) return '';
- // 「学年：」を取り除いてシンプルにする
- let val = g.replace('学年：', '');
- const map={
-  '小学1年':'小1','小学2年':'小2','小学3年':'小3','小学4年':'小4','小学5年':'小5','小学6年':'小6',
-  '中学1年':'中1','中学2年':'中2','中学3年':'中3',
-  '高校1年':'高1','高校2年':'高2','高校3年':'高3'
- };
- return map[val] || val;
-}
-
         document.addEventListener('DOMContentLoaded', () => { 
             if (typeof YubinBango !== 'undefined') new YubinBango.Core(); 
             const today = new Date();
@@ -144,13 +109,17 @@ function normalizeGrade(g){
             if(!birthDate) return "-";
             const birth = new Date(birthDate);
             if (isNaN(birth.getTime())) return "-";
-            const today = new Date();
-            let schoolYear = today.getFullYear();
-            if (today.getMonth() < 3) schoolYear--;
-            let grade = schoolYear - birth.getFullYear() - 5;
-            const m = birth.getMonth() + 1;
-            const d = birth.getDate();
-            if (m > 4 || (m === 4 && d >= 2)) grade--;
+            const now = new Date();
+            // 現在の年度（4月1日始まり）を計算
+            let currentYear = now.getFullYear();
+            if (now.getMonth() < 3) currentYear--;
+            
+            // 誕生日時点の年度を計算
+            let birthYear = birth.getFullYear();
+            if (birth.getMonth() < 3) birthYear--;
+            
+            let grade = currentYear - birthYear - 5;
+            
             if (grade >= 1 && grade <= 6) return "小" + grade;
             if (grade >= 7 && grade <= 9) return "中" + (grade - 6);
             if (grade >= 10 && grade <= 12) return "高" + (grade - 9);
@@ -160,16 +129,16 @@ function normalizeGrade(g){
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
         import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, updateDoc, deleteDoc, addDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
-        const db = getFirestore(initializeApp({ apiKey: "AIzaSyCZeaZOi34sUgtmGgKT0NRmlR7zkW03rKA", authDomain: "juku-kanri-system.firebaseapp.com", projectId: "juku-kanri-system", storageBucket: "juku-kanri-system.firebasestorage.app", messagingSenderId: "525148833125", appId: "1:525148833125:web:36bee786e3545bd7908d8c" }));
+        const db = getFirestore(initializeApp({ apiKey: "YOUR_API_KEY", projectId: "juku-kanri-system", storageBucket: "juku-kanri-system.firebasestorage.app", messagingSenderId: "525148833125", appId: "1:525148833125:web:36bee786e3545bd7908d8c" }));
         let cachedData = [];
         let trialsData = [];
         const timeOptions = `<option>①17:00</option><option>②18:10</option><option>③19:20</option><option>④20:30</option><option>⑤13:40</option><option>⑥14:50</option><option>⑦16:00</option><option>⑧17:30</option><option>⑨18:40</option><option>⑩19:50</option>`;
         const famContainer = document.getElementById('fam-container');
         for(let i=1; i<=4; i++) {
-            famContainer.innerHTML += `<div class="p-2 border rounded bg-slate-50"><input type="text" id="fam-name${i}" placeholder="氏名" class="input-styled mb-1"><input type="text" id="fam-kana${i}" placeholder="フリガナ" class="input-styled mb-1"><input type="text" id="fam-rel${i}" placeholder="続柄" class="input-styled mb-1"><input type="text" id="fam-birth${i}" placeholder="生年月日" class="input-styled mb-1" onfocus="(this.type='date')" onblur="(this.type='text')" onchange="document.getElementById('fam-grade${i}').innerText = window.calcGrade(this.value)"><div class="flex items-center gap-1 border-2 border-slate-300 rounded bg-white px-2"><span class="text-xs text-slate-500 font-bold whitespace-nowrap"><span id="fam-grade${i}">-</span></span><input type="text" id="fam-work${i}" placeholder="勤務先/学校名" class="flex-1 p-1 outline-none text-sm"></div></div>`;
+            famContainer.innerHTML += `<div class="p-2 border rounded bg-slate-50"><input type="text" id="fam-name${i}" placeholder="氏名" class="input-styled mb-1"><input type="text" id="fam-kana${i}" placeholder="フリガナ" class="input-styled mb-1"><input type="text" id="fam-rel${i}" placeholder="続柄" class="input-styled mb-1"><input type="text" id="fam-birth${i}" placeholder="生年月日" class="input-styled mb-1" onfocus="(this.type='date')" onblur="(this.type='text')" onchange="document.getElementById('fam-grade${i}').innerText = window.calcGrade(this.value)"><div class="flex items-center gap-1 border-2 border-slate-300 rounded bg-white px-2"><span class="text-xs text-slate-500 font-bold whitespace-nowrap">学年: <span id="fam-grade${i}">-</span></span><input type="text" id="fam-work${i}" placeholder="勤務先/学校名" class="flex-1 p-1 outline-none text-sm"></div></div>`;
         }
         const getColor = (t) => { const colors = {'①': '#fee2e2', '②': '#fef3c7', '③': '#dcfce7', '④': '#dbeafe', '⑤': '#f1f5f9', '⑥': '#f3e8ff', '⑦': '#ffe4e6', '⑧': '#fef9c3', '⑨': '#ccfbf1', '⑩': '#e0f2fe'}; return colors[t.substring(0,1)] || '#ffffff'; };
-        const createRow = (d="月", t="①17:00", s="算数") => { const div = document.createElement('div'); div.className = "schedule-row"; div.style.backgroundColor = getColor(t); div.style.padding = "5px"; div.style.borderRadius = "4px"; div.style.marginBottom = "5px"; div.innerHTML = `<select class="day border p-2 text-sm bg-white"><option>月</option><option>火</option><option>水</option><option>木</option><option>金</option><option>土</option></select><select class="time border p-2 text-sm bg-white" onchange="this.parentElement.style.backgroundColor = getColor(this.value)">${timeOptions}</select><select class="sub border p-2 text-sm bg-white"><option>算数</option><option>数学</option><option>英語</option><option>国語</option><option>理科</option><option>社会</option><option>情報</option><option>物理</option><option>化学</option><option>生物</option></select>`; div.querySelector('.day').value = d; div.querySelector('.time').value = t; div.querySelector('.sub').value = s; return div; };
+        const createRow = (d="月", t="①17:00", s="算数") => { const div = document.createElement('div'); div.className = "schedule-row"; div.style.backgroundColor = getColor(t); div.style.padding = "5px"; div.style.borderRadius = "4px"; div.style.marginBottom = "5px"; div.innerHTML = `<select class="day border p-2 text-sm bg-white"><option>月</option><option>火</option><option>水</option><option>木</option><option>金</option><option>土</option></select><select class="time border p-2 text-sm bg-white" onchange="this.parentElement.style.backgroundColor = getColor(this.value)">${timeOptions}</select><select class="sub border p-2 text-sm bg-white"><option>算数</option><option>数学</option><option>英語</option><option>国語</option><option>理科</option><option>社会</option></select>`; div.querySelector('.day').value = d; div.querySelector('.time').value = t; div.querySelector('.sub').value = s; return div; };
         
         window.convertTrial = async (t) => {
             document.getElementById('stu-id').value = Date.now().toString();
@@ -179,43 +148,11 @@ function normalizeGrade(g){
             document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('nav-active-tab'));
             document.getElementById('tab1').classList.add('active');
             document.getElementById('nav1').classList.add('nav-active-tab');
-            window.pendingTrialConversion = t.id; document.getElementById("cancel-trial-convert").classList.remove("hidden");
+            window.pendingTrialConversion = t.id;
             alert("登録編集タブへ移動しました。内容を確認して保存してください。");
         };
 
-        
-const lessonSlotsWeekday=['①17:00','②18:10','③19:20','④20:30'];
-const lessonSlotsSaturday=['①17:00','②18:10','③19:20','④20:30','⑤13:40','⑥14:50','⑦16:00','⑧17:30','⑨18:40','⑩19:50'];
-
-function renderScheduleTable(events, dayStr){
- const isSat = dayStr==='土';
- const slots=isSat?lessonSlotsSaturday:lessonSlotsWeekday;
- const todayList=document.getElementById('today-list');
- todayList.innerHTML='';
- slots.forEach(slot=>{
-   const rows=events.filter(e=>e.time===slot);
-   let html=`<div class="border rounded overflow-hidden mb-4">
-   <div style="background:${getColor(slot)}" class="font-bold p-2">${slot}</div>
-   <table style="width:100%;table-layout:fixed;border-collapse:collapse;background:white;font-size:14px">
-   <thead><tr><th>氏名</th><th>学年</th><th>教科</th><th>出席</th><th>欠席</th><th>取消</th></tr></thead><tbody>`;
-   rows.forEach(ev=>{
-      const g = normalizeGrade(ev.grade || '');
-      html+=`<tr>
-      <td style="padding:6px">${ev.name}${ev.trial ? '<br><span style="font-size:12px;color:#666">体験</span>' : ''}</td>
-      <td style="padding:6px;text-align:center">${g}</td>
-      <td style="padding:6px;text-align:center">${ev.sub||'-'}</td>
-      <td style="padding:6px;text-align:center"><button class="att-btn" onclick="setAtt('${ev.id}','${ev.attKey}','出席','${ev.absKey||''}')">出</button></td>
-      <td style="padding:6px;text-align:center"><button class="att-btn" onclick="setAtt('${ev.id}','${ev.attKey}','欠席','${ev.absKey||''}')">欠</button></td>
-      <td style="padding:6px;text-align:center"><button class="att-btn" onclick="setAtt('${ev.id}','${ev.attKey}','取消','${ev.absKey||''}')">取</button></td>
-      </tr>`;
-   });
-   if(rows.length===0) html += '<tr><td colspan="6" style="padding:8px;text-align:center;color:#999">予約なし</td></tr>';
-   html+='</tbody></table></div>';
-   todayList.innerHTML+=html;
- });
-}
-
-const render = () => { 
+        const render = () => { 
             const todayStr = document.getElementById('cal-today').value; 
             if(!todayStr) return; 
             const dayStr = ["日", "月", "火", "水", "木", "金", "土"][new Date(todayStr).getDay()]; 
@@ -229,59 +166,90 @@ const render = () => {
             trialList.innerHTML = "";
             makeupList.innerHTML = "<h2 class='font-bold border-b pb-2'>振替指定</h2>"; 
             searchBox.innerHTML = '<option value="">名前を選択してください...</option>'; 
-            let todayEvents = []; 
             
+            const timeSlots = ["①17:00", "②18:10", "③19:20", "④20:30", "⑤13:40", "⑥14:50", "⑦16:00", "⑧17:30", "⑨18:40", "⑩19:50"];
+            let eventsByTime = {};
+            timeSlots.forEach(t => eventsByTime[t] = []);
+
+            const addEvent = (slot, event) => {
+                if (!eventsByTime[slot]) eventsByTime[slot] = [];
+                eventsByTime[slot].push(event);
+            };
+
             trialsData.forEach(t => {
                 if(!t.registered) {
                     trialList.innerHTML += `<div class="p-2 border rounded flex justify-between items-center text-sm"><div><strong>${t.name}</strong><br>${t.date} ${t.time}</div><button onclick="window.convertTrial({id:'${t.id}', name:'${t.name}', grade:'${t.grade}'})" class="bg-blue-600 text-white px-2 py-1 rounded">入塾へ</button></div>`;
                 }
-            });
-
-
-            trialsData.forEach(t => {
                 if(t.date === todayStr) {
-                    todayEvents.push({ name: t.name, trial:true, id: null, time: t.time, grade: t.grade, sub:(t.subject||''), attKey: "", status: "" });
+                    addEvent(t.time, {name: t.name + " (体験)", id: "trial", time: t.time, sub: t.grade || "体験授業", attKey: "trial", status: ""});
                 }
             });
 
             cachedData.forEach(s => { 
-                const reservationMap = {}; (s.makeupReservations || []).forEach(r => { reservationMap[r.absKey] = r; }); s.makeupReservations = Object.values(reservationMap); searchBox.innerHTML += `<option value="${s.id}">${s.name}</option>`; const allAbsences = Object.keys(s.attendance || {}).filter(k => s.attendance[k] === '欠席'); const reservedAbsKeys = (s.makeupReservations || []).map(r => r.absKey); const remaining = Math.max(0, allAbsences.filter(k => !reservedAbsKeys.includes(k)).length); studentList.innerHTML += `<div class="border p-2 rounded text-sm"><div class="flex justify-between items-center"><div onclick="window.editMode('${s.id}')" class="cursor-pointer font-bold text-blue-600 underline">${s.name}</div><div class="text-xs text-slate-500 font-bold">振替残: ${remaining}</div></div></div>`; (s.schedules || []).filter(sc => sc.day === dayStr).forEach(sc => { const attKey = `${todayStr}_${sc.time}`; todayEvents.push({name: s.name, grade:s.grade||'', id: s.id, time: sc.time, sub: sc.sub, attKey, status: (s.attendance || {})[attKey]}); }); (s.makeupReservations || []).filter(r => r.date === todayStr).forEach(r => { todayEvents.push({name: s.name, makeup:true, id: s.id, time: r.time, sub: "振替", attKey: `makeup_${s.id}_${r.date}_${r.time}`, status: (s.attendance || {})[`makeup_${s.id}_${r.date}_${r.time}`], absKey: r.absKey}); }); const absences = Object.keys(s.attendance || {}).filter(k => s.attendance[k] === '欠席'); if (absences.length > 0) { makeupList.innerHTML += `<div class="p-3 border rounded bg-slate-50"><strong>${s.name}</strong><div class="grid gap-2 mt-2">` + absences.map(k => { const parts = k.split('_'); const activeReservations = (s.makeupReservations || []).filter(r => !r.completed); const res = activeReservations.find(r => r.absKey === k); if ((s.makeupReservations || []).some(r => r.absKey === k && r.completed)) return ''; return `<div class="text-xs p-2 border bg-white rounded flex flex-col gap-1"><span>欠席: ${parts[0]} ${parts[1]}</span>` + (res ? `<div class="text-blue-600 font-bold">予約済: ${res.date} ${res.time} <button onclick="cancelMakeup('${s.id}','${k}')" class="bg-red-500 text-white px-1 rounded ml-2">予約取消</button></div>` : `<div class="flex gap-1"><input type="date" id="d-${k}" class="border"><select id="t-${k}">${timeOptions}</select><button onclick="bookMakeup('${s.id}','${k}')" class="bg-blue-600 text-white px-2 rounded">予約</button></div>`) + `</div>`; }).join('') + `</div></div>`; } }); todayEvents.sort((a,b)=>a.time.localeCompare(b.time)); renderScheduleTable(todayEvents, dayStr); };  
+                const reservationMap = {}; (s.makeupReservations || []).forEach(r => { reservationMap[r.absKey] = r; }); s.makeupReservations = Object.values(reservationMap); searchBox.innerHTML += `<option value="${s.id}">${s.name}</option>`; const allAbsences = Object.keys(s.attendance || {}).filter(k => s.attendance[k] === '欠席'); const reservedAbsKeys = (s.makeupReservations || []).map(r => r.absKey); const remaining = Math.max(0, allAbsences.filter(k => !reservedAbsKeys.includes(k)).length); studentList.innerHTML += `<div class="border p-2 rounded text-sm"><div class="flex justify-between items-center"><div onclick="window.editMode('${s.id}')" class="cursor-pointer font-bold text-blue-600 underline">${s.name}</div><div class="text-xs text-slate-500 font-bold">振替残: ${remaining}</div></div></div>`; 
+                (s.schedules || []).filter(sc => sc.day === dayStr).forEach(sc => { 
+                    const attKey = `${todayStr}_${sc.time}`; 
+                    addEvent(sc.time, {name: s.name, id: s.id, time: sc.time, sub: sc.sub, attKey, status: (s.attendance || {})[attKey]}); 
+                }); 
+                (s.makeupReservations || []).filter(r => r.date === todayStr).forEach(r => { 
+                    addEvent(r.time, {name: s.name, makeup:true, id: s.id, time: r.time, sub: "振替", attKey: `makeup_${s.id}_${r.date}_${r.time}`, status: (s.attendance || {})[`makeup_${s.id}_${r.date}_${r.time}`], absKey: r.absKey}); 
+                }); 
+                const absences = Object.keys(s.attendance || {}).filter(k => s.attendance[k] === '欠席'); if (absences.length > 0) { makeupList.innerHTML += `<div class="p-3 border rounded bg-slate-50"><strong>${s.name}</strong><div class="grid gap-2 mt-2">` + absences.map(k => { const parts = k.split('_'); const activeReservations = (s.makeupReservations || []).filter(r => !r.completed); const res = activeReservations.find(r => r.absKey === k); if ((s.makeupReservations || []).some(r => r.absKey === k && r.completed)) return ''; return `<div class="text-xs p-2 border bg-white rounded flex flex-col gap-1"><span>欠席: ${parts[0]} ${parts[1]}</span>` + (res ? `<div class="text-blue-600 font-bold">予約済: ${res.date} ${res.time} <button onclick="cancelMakeup('${s.id}','${k}')" class="bg-red-500 text-white px-1 rounded ml-2">予約取消</button></div>` : `<div class="flex gap-1"><input type="date" id="d-${k}" class="border"><select id="t-${k}">${timeOptions}</select><button onclick="bookMakeup('${s.id}','${k}')" class="bg-blue-600 text-white px-2 rounded">予約</button></div>`) + `</div>`; }).join('') + `</div></div>`; } 
+            }); 
+
+            timeSlots.forEach(t => {
+                if (eventsByTime[t].length > 0) {
+                    todayList.innerHTML += `<div class="font-bold text-slate-700 mt-4 mb-1 border-b">${t}の授業</div>`;
+                    eventsByTime[t].forEach(ev => {
+                        todayList.innerHTML += `<div class="grid-row" style="background:${getColor(ev.time)}">
+                        <strong>${ev.name}${ev.makeup ? '<br><span class="text-xs">(振替)</span>' : ''}</strong>
+                        <span style="word-break:break-word;">${ev.sub}</span>
+                        <div class="flex gap-1">
+                        ${ev.id === 'trial' ? `<button class="att-btn">出</button><button class="att-btn">欠</button><button class="att-btn">取</button>` :
+                        ev.id ? `<button onclick="setAtt('${ev.id}','${ev.attKey}','出席','${ev.absKey || ''}')" class="att-btn ${ev.status === '出席' ? 'bg-blue-500 text-white' : ''}">出</button><button onclick="setAtt('${ev.id}','${ev.attKey}','欠席','${ev.absKey || ''}')" class="att-btn ${ev.status === '欠席' ? 'bg-red-500 text-white' : ''}">欠</button><button onclick="setAtt('${ev.id}','${ev.attKey}','取消','${ev.absKey || ''}')" class="att-btn">取</button>` : ''}
+                        </div></div>`;
+                    });
+                }
+            });
+        }; 
 
         window.cancelMakeup = async (id, absKey) => { if(!confirm("予約を取り消しますか？")) return; const ref = doc(db, "students", id); const snap = await getDoc(ref); let data = snap.data(); let res = (data.makeupReservations || []).filter(r => r.absKey !== absKey); await updateDoc(ref, { makeupReservations: res }); render(); }; 
-        window.setAtt = async (id, attKey, status, absKey='') => { const ref = doc(db, "students", id); const snap = await getDoc(ref); let data = snap.data(); let attendance = data.attendance || {}; attendance[attKey] = status; let reservations = data.makeupReservations || []; if (status === '出席' && absKey) { reservations = reservations.map(r => r.absKey === absKey ? {...r, completed:true} : r); await updateDoc(ref, { attendance, makeupReservations: reservations }); } else { await updateDoc(ref, { attendance }); } render(); }; 
+        window.setAtt = async (id, attKey, status, absKey='') => { 
+            const ref = doc(db, "students", id); 
+            const snap = await getDoc(ref); 
+            let data = snap.data(); 
+            let attendance = data.attendance || {}; 
+            if(status === '取消') {
+                delete attendance[attKey];
+            } else {
+                attendance[attKey] = status;
+            }
+            let reservations = data.makeupReservations || []; 
+            if (status === '出席' && absKey) { reservations = reservations.map(r => r.absKey === absKey ? {...r, completed:true} : r); await updateDoc(ref, { attendance, makeupReservations: reservations }); } else { await updateDoc(ref, { attendance }); } render(); 
+        }; 
         window.bookMakeup = async (id, absKey) => { const date = document.getElementById(`d-${absKey}`).value; const time = document.getElementById(`t-${absKey}`).value; if(!date) return alert("日付を選択"); const ref = doc(db, "students", id); const snap = await getDoc(ref); let data = snap.data(); let res = (data.makeupReservations || []).filter(r => r.absKey !== absKey); res.push({absKey, date, time, completed:false}); await updateDoc(ref, { makeupReservations: res }); alert("予約完了"); render(); }; 
         
-        document.getElementById('search-box').onchange = (e) => { const s = cachedData.find(i => i.id === e.target.value); if (!s) return; let famHtml = ""; for (let i = 1; i <= 4; i++) { if (s['famName' + i]) famHtml += `<div class="text-xs">・${s['famRel' + i]}: ${s['famName' + i]}</div>`; } document.getElementById('detail-view').innerHTML = `
-<div class="font-bold text-lg">${s.name}</div>
-<div>学年: ${normalizeGrade(s.grade||'-')}</div>
-<div>フリガナ: ${s.kana||''}</div>
-<div>電話: ${s.tel1||''}</div>
-<div>サブ電話: ${s.tel2||''}</div>
-<div>メール: ${s.email||''}</div>
-<div>住所: ${s.addr||''}</div>
-${famHtml}`; }; 
-        window.editMode = async (id) => { const snap = await getDoc(doc(db, "students", id)); const s = snap.data(); document.getElementById('stu-id').value = id; document.getElementById('stu-name').value = s.name; document.getElementById('stu-kana').value = s.kana || ""; document.getElementById('stu-birth').value = s.birth || ""; document.getElementById('grade-result').innerText = s.grade || "-"; document.getElementById('zip').value = s.zip || ""; document.getElementById('addr').value = s.addr || ""; document.getElementById('email').value = s.email || ""; document.getElementById('tel1').value = s.tel1 || ""; document.getElementById('tel2').value = s.tel2 || ""; for(let i=1; i<=4; i++) { document.getElementById('fam-name'+i).value = s['famName'+i] || ""; document.getElementById('fam-kana'+i).value = s['famKana'+i] || ""; document.getElementById('fam-rel'+i).value = s['famRel'+i] || ""; document.getElementById('fam-birth'+i).value = s['famBirth'+i] || ""; document.getElementById('fam-grade'+i).innerText = normalizeGrade(window.calcGrade(s['famBirth'+i] || "")); document.getElementById('fam-work'+i).value = s['famWork'+i] || ""; } document.getElementById('delete-btn').classList.remove('hidden'); const container = document.getElementById('schedule-container'); container.innerHTML = ""; (s.schedules || []).forEach(sc => container.appendChild(createRow(sc.day, sc.time, sc.sub))); document.querySelectorAll('nav button')[0].click(); }; 
+        document.getElementById('search-box').onchange = (e) => { 
+            const s = cachedData.find(i => i.id === e.target.value); 
+            if (!s) return; 
+            let famHtml = ""; 
+            for (let i = 1; i <= 4; i++) { if (s['famName' + i]) famHtml += `<div class="text-xs border-b pb-1 mb-1"><strong>${s['famRel' + i] || '家族'}: ${s['famName' + i]}</strong><br>生年月日: ${s['famBirth' + i] || '-'} / 勤務先等: ${s['famWork' + i] || '-'}</div>`; } 
+            document.getElementById('detail-view').innerHTML = `<div class="font-bold text-lg mb-2">${s.name} (${s.kana || ''})</div><div class="mb-2">ID: ${s.id}<br>学年: ${s.grade || '-'}<br>住所: ${s.zip || ''} ${s.addr || ''}<br>Tel: ${s.tel1 || ''} / ${s.tel2 || ''}<br>Email: ${s.email || ''}</div><div class="font-bold border-b mb-1">家族情報</div>${famHtml || '登録なし'}`; 
+        }; 
+        
+        window.editMode = async (id) => { const snap = await getDoc(doc(db, "students", id)); const s = snap.data(); document.getElementById('stu-id').value = id; document.getElementById('stu-name').value = s.name; document.getElementById('stu-kana').value = s.kana || ""; document.getElementById('stu-birth').value = s.birth || ""; document.getElementById('grade-result').innerText = s.grade || "-"; document.getElementById('zip').value = s.zip || ""; document.getElementById('addr').value = s.addr || ""; document.getElementById('email').value = s.email || ""; document.getElementById('tel1').value = s.tel1 || ""; document.getElementById('tel2').value = s.tel2 || ""; for(let i=1; i<=4; i++) { document.getElementById('fam-name'+i).value = s['famName'+i] || ""; document.getElementById('fam-kana'+i).value = s['famKana'+i] || ""; document.getElementById('fam-rel'+i).value = s['famRel'+i] || ""; document.getElementById('fam-birth'+i).value = s['famBirth'+i] || ""; document.getElementById('fam-grade'+i).innerText = window.calcGrade(s['famBirth'+i] || ""); document.getElementById('fam-work'+i).value = s['famWork'+i] || ""; } document.getElementById('delete-btn').classList.remove('hidden'); const container = document.getElementById('schedule-container'); container.innerHTML = ""; (s.schedules || []).forEach(sc => container.appendChild(createRow(sc.day, sc.time, sc.sub))); document.querySelectorAll('nav button')[0].click(); }; 
         document.getElementById('add-schedule').onclick = () => document.getElementById('schedule-container').appendChild(createRow());
         document.getElementById('cal-today').onchange = render; 
         window.pendingTrialConversion = null;
-        document.getElementById('save-btn').onclick = async () => { const id = document.getElementById('stu-id').value; if(!id) return; const schedules = Array.from(document.querySelectorAll('.schedule-row')).map(row => ({ day: row.querySelector('.day').value, time: row.querySelector('.time').value, sub: row.querySelector('.sub').value })); let famData = {}; for(let i=1; i<=4; i++) { famData['famName'+i] = document.getElementById('fam-name'+i).value; famData['famKana'+i] = document.getElementById('fam-kana'+i).value; famData['famRel'+i] = document.getElementById('fam-rel'+i).value; famData['famBirth'+i] = document.getElementById('fam-birth'+i).value; famData['famWork'+i] = document.getElementById('fam-work'+i).value; } await setDoc(doc(db, "students", id), { name: document.getElementById('stu-name').value, kana: document.getElementById('stu-kana').value, birth: document.getElementById('stu-birth').value, grade: document.getElementById('grade-result').innerText, zip: document.getElementById('zip').value, addr: document.getElementById('addr').value, email: document.getElementById('email').value, tel1: document.getElementById('tel1').value, tel2: document.getElementById('tel2').value, schedules: schedules, ...famData }, {merge: true});
-            if(window.pendingTrialConversion){
-                await deleteDoc(doc(db, "trials", window.pendingTrialConversion));
-                window.pendingTrialConversion = null;
-            }
-            location.reload(); }; 
+        document.getElementById('save-btn').onclick = async () => { const id = document.getElementById('stu-id').value; if(!id) return; const schedules = Array.from(document.querySelectorAll('.schedule-row')).map(row => ({ day: row.querySelector('.day').value, time: row.querySelector('.time').value, sub: row.querySelector('.sub').value })); let famData = {}; for(let i=1; i<=4; i++) { famData['famName'+i] = document.getElementById('fam-name'+i).value; famData['famKana'+i] = document.getElementById('fam-kana'+i).value; famData['famRel'+i] = document.getElementById('fam-rel'+i).value; famData['famBirth'+i] = document.getElementById('fam-birth'+i).value; famData['famWork'+i] = document.getElementById('fam-work'+i).value; } await setDoc(doc(db, "students", id), { name: document.getElementById('stu-name').value, kana: document.getElementById('stu-kana').value, birth: document.getElementById('stu-birth').value, grade: document.getElementById('grade-result').innerText, zip: document.getElementById('zip').value, addr: document.getElementById('addr').value, email: document.getElementById('email').value, tel1: document.getElementById('tel1').value, tel2: document.getElementById('tel2').value, schedules: schedules, ...famData }, {merge: true}); if(window.pendingTrialConversion){ await deleteDoc(doc(db, "trials", window.pendingTrialConversion)); window.pendingTrialConversion = null; } location.reload(); }; 
         
-        document.getElementById('save-trial').onclick = async () => { await addDoc(collection(db, "trials"), { name: document.getElementById('trial-name').value, grade: document.getElementById('trial-grade').value, subject: document.getElementById('trial-subject').value, date: document.getElementById('trial-date').value, time: document.getElementById('trial-time').value, registered: false }); location.reload(); };
+        document.getElementById('save-trial').onclick = async () => { await addDoc(collection(db, "trials"), { name: document.getElementById('trial-name').value, grade: document.getElementById('trial-grade').value, date: document.getElementById('trial-date').value, time: document.getElementById('trial-time').value, registered: false }); location.reload(); };
         document.querySelectorAll('nav button').forEach((btn, i) => { btn.onclick = () => { document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active')); document.querySelectorAll('.nav-btn').forEach(n => n.classList.remove('nav-active-tab')); document.querySelectorAll('.tab-content')[i].classList.add('active'); btn.classList.add('nav-active-tab'); }; }); 
         
         onSnapshot(collection(db, "students"), async (snap) => { cachedData = snap.docs.map(doc => ({id: doc.id, ...doc.data()})); render(); });
         onSnapshot(collection(db, "trials"), (snap) => { trialsData = snap.docs.map(doc => ({id: doc.id, ...doc.data()})); render(); });
         
-        document.getElementById('cancel-trial-convert').onclick = () => {
-            if(!confirm('体験からの移行をキャンセルしますか？')) return;
-            window.pendingTrialConversion = null;
-            location.reload();
-        };
+        document.getElementById('cancel-trial-convert').onclick = () => { if(!confirm('体験からの移行をキャンセルしますか？')) return; window.pendingTrialConversion = null; location.reload(); };
         document.getElementById('clear-btn').onclick = () => location.reload(); document.getElementById('delete-btn').onclick = async () => { if(!confirm("削除しますか？")) return; await deleteDoc(doc(db, "students", document.getElementById('stu-id').value)); location.reload(); };
     </script>
 </body>

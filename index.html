@@ -106,25 +106,35 @@
         });
         
         window.calcGrade = (birthDate) => {
-            if(!birthDate) return "-";
-            const birth = new Date(birthDate);
-            if (isNaN(birth.getTime())) return "-";
-            const now = new Date();
-            // 現在の年度（4月1日始まり）を計算
-            let currentYear = now.getFullYear();
-            if (now.getMonth() < 3) currentYear--;
-            
-            // 誕生日時点の年度を計算
-            let birthYear = birth.getFullYear();
-            if (birth.getMonth() < 3) birthYear--;
-            
-            let grade = currentYear - birthYear - 5;
-            
-            if (grade >= 1 && grade <= 6) return "小" + grade;
-            if (grade >= 7 && grade <= 9) return "中" + (grade - 6);
-            if (grade >= 10 && grade <= 12) return "高" + (grade - 9);
-            return "既卒";
-        };
+    if (!birthDate) return "-";
+
+    const birth = new Date(birthDate);
+    if (isNaN(birth.getTime())) return "-";
+
+    const today = new Date();
+
+    const schoolYear =
+        today.getMonth() >= 3
+            ? today.getFullYear()
+            : today.getFullYear() - 1;
+
+    let entranceYear = birth.getFullYear() + 6;
+
+    if (
+        birth.getMonth() > 3 ||
+        (birth.getMonth() === 3 && birth.getDate() >= 2)
+    ) {
+        entranceYear++;
+    }
+
+    const grade = schoolYear - entranceYear + 1;
+
+    if (grade >= 1 && grade <= 6) return `小${grade}`;
+    if (grade >= 7 && grade <= 9) return `中${grade - 6}`;
+    if (grade >= 10 && grade <= 12) return `高${grade - 9}`;
+
+    return "既卒";
+};
     </script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
@@ -135,7 +145,7 @@
         const timeOptions = `<option>①17:00</option><option>②18:10</option><option>③19:20</option><option>④20:30</option><option>⑤13:40</option><option>⑥14:50</option><option>⑦16:00</option><option>⑧17:30</option><option>⑨18:40</option><option>⑩19:50</option>`;
         const famContainer = document.getElementById('fam-container');
         for(let i=1; i<=4; i++) {
-            famContainer.innerHTML += `<div class="p-2 border rounded bg-slate-50"><input type="text" id="fam-name${i}" placeholder="氏名" class="input-styled mb-1"><input type="text" id="fam-kana${i}" placeholder="フリガナ" class="input-styled mb-1"><input type="text" id="fam-rel${i}" placeholder="続柄" class="input-styled mb-1"><input type="text" id="fam-birth${i}" placeholder="生年月日" class="input-styled mb-1" onfocus="(this.type='date')" onblur="(this.type='text')" onchange="document.getElementById('fam-grade${i}').innerText = window.calcGrade(this.value)"><div class="flex items-center gap-1 border-2 border-slate-300 rounded bg-white px-2"><span class="text-xs text-slate-500 font-bold whitespace-nowrap">学年: <span id="fam-grade${i}">-</span></span><input type="text" id="fam-work${i}" placeholder="勤務先/学校名" class="flex-1 p-1 outline-none text-sm"></div></div>`;
+            famContainer.innerHTML += `<div class="p-2 border rounded bg-slate-50"><input type="text" id="fam-name${i}" placeholder="氏名" class="input-styled mb-1"><input type="text" id="fam-kana${i}" placeholder="フリガナ" class="input-styled mb-1"><input type="text" id="fam-rel${i}" placeholder="続柄" class="input-styled mb-1"><input type="text" id="fam-birth${i}" placeholder="生年月日" class="input-styled mb-1" onfocus="(this.type='date')" onblur="(this.type='text')" onchange="document.getElementById('fam-grade${i}').innerText = window.calcGrade(this.value)"><div class="flex items-center gap-1 border-2 border-slate-300 rounded bg-white px-2"><span class="text-xs text-slate-500 font-bold whitespace-nowrap"><span id="fam-grade${i}">-</span></span><input type="text" id="fam-work${i}" placeholder="勤務先/学校名" class="flex-1 p-1 outline-none text-sm"></div></div>`;
         }
         const getColor = (t) => { const colors = {'①': '#fee2e2', '②': '#fef3c7', '③': '#dcfce7', '④': '#dbeafe', '⑤': '#f1f5f9', '⑥': '#f3e8ff', '⑦': '#ffe4e6', '⑧': '#fef9c3', '⑨': '#ccfbf1', '⑩': '#e0f2fe'}; return colors[t.substring(0,1)] || '#ffffff'; };
         const createRow = (d="月", t="①17:00", s="算数") => { const div = document.createElement('div'); div.className = "schedule-row"; div.style.backgroundColor = getColor(t); div.style.padding = "5px"; div.style.borderRadius = "4px"; div.style.marginBottom = "5px"; div.innerHTML = `<select class="day border p-2 text-sm bg-white"><option>月</option><option>火</option><option>水</option><option>木</option><option>金</option><option>土</option></select><select class="time border p-2 text-sm bg-white" onchange="this.parentElement.style.backgroundColor = getColor(this.value)">${timeOptions}</select><select class="sub border p-2 text-sm bg-white"><option>算数</option><option>数学</option><option>英語</option><option>国語</option><option>理科</option><option>社会</option></select>`; div.querySelector('.day').value = d; div.querySelector('.time').value = t; div.querySelector('.sub').value = s; return div; };
@@ -186,7 +196,7 @@
             });
 
             cachedData.forEach(s => { 
-                const reservationMap = {}; (s.makeupReservations || []).forEach(r => { reservationMap[r.absKey] = r; }); s.makeupReservations = Object.values(reservationMap); searchBox.innerHTML += `<option value="${s.id}">${s.name}</option>`; const allAbsences = Object.keys(s.attendance || {}).filter(k => s.attendance[k] === '欠席'); const reservedAbsKeys = (s.makeupReservations || []).map(r => r.absKey); const remaining = Math.max(0, allAbsences.filter(k => !reservedAbsKeys.includes(k)).length); studentList.innerHTML += `<div class="border p-2 rounded text-sm"><div class="flex justify-between items-center"><div onclick="window.editMode('${s.id}')" class="cursor-pointer font-bold text-blue-600 underline">${s.name}</div><div class="text-xs text-slate-500 font-bold">振替残: ${remaining}</div></div></div>`; 
+                const reservationMap = {}; (s.makeupReservations || []).forEach(r => { reservationMap[r.absKey] = r; }); s.makeupReservations = Object.values(reservationMap); searchBox.innerHTML += `<option value="${s.id}">${s.name}</option>`; const allAbsences = Object.keys(s.attendance || {}).filter(k => s.attendance[k] === '欠席' && !k.startsWith('makeup_')); const reservedAbsKeys = (s.makeupReservations || []).map(r => r.absKey); const remaining = Math.max(0, allAbsences.filter(k => !reservedAbsKeys.includes(k)).length); studentList.innerHTML += `<div class="border p-2 rounded text-sm"><div class="flex justify-between items-center"><div onclick="window.editMode('${s.id}')" class="cursor-pointer font-bold text-blue-600 underline">${s.name}</div><div class="text-xs text-slate-500 font-bold">振替残: ${remaining}</div></div></div>`; 
                 (s.schedules || []).filter(sc => sc.day === dayStr).forEach(sc => { 
                     const attKey = `${todayStr}_${sc.time}`; 
                     addEvent(sc.time, {name: s.name, id: s.id, time: sc.time, sub: sc.sub, attKey, status: (s.attendance || {})[attKey]}); 
@@ -194,7 +204,7 @@
                 (s.makeupReservations || []).filter(r => r.date === todayStr).forEach(r => { 
                     addEvent(r.time, {name: s.name, makeup:true, id: s.id, time: r.time, sub: "振替", attKey: `makeup_${s.id}_${r.date}_${r.time}`, status: (s.attendance || {})[`makeup_${s.id}_${r.date}_${r.time}`], absKey: r.absKey}); 
                 }); 
-                const absences = Object.keys(s.attendance || {}).filter(k => s.attendance[k] === '欠席'); if (absences.length > 0) { makeupList.innerHTML += `<div class="p-3 border rounded bg-slate-50"><strong>${s.name}</strong><div class="grid gap-2 mt-2">` + absences.map(k => { const parts = k.split('_'); const activeReservations = (s.makeupReservations || []).filter(r => !r.completed); const res = activeReservations.find(r => r.absKey === k); if ((s.makeupReservations || []).some(r => r.absKey === k && r.completed)) return ''; return `<div class="text-xs p-2 border bg-white rounded flex flex-col gap-1"><span>欠席: ${parts[0]} ${parts[1]}</span>` + (res ? `<div class="text-blue-600 font-bold">予約済: ${res.date} ${res.time} <button onclick="cancelMakeup('${s.id}','${k}')" class="bg-red-500 text-white px-1 rounded ml-2">予約取消</button></div>` : `<div class="flex gap-1"><input type="date" id="d-${k}" class="border"><select id="t-${k}">${timeOptions}</select><button onclick="bookMakeup('${s.id}','${k}')" class="bg-blue-600 text-white px-2 rounded">予約</button></div>`) + `</div>`; }).join('') + `</div></div>`; } 
+                const absences = Object.keys(s.attendance || {}).filter(k => s.attendance[k] === '欠席' && !k.startsWith('makeup_')); if (absences.length > 0) { makeupList.innerHTML += `<div class="p-3 border rounded bg-slate-50"><strong>${s.name}</strong><div class="grid gap-2 mt-2">` + absences.map(k => { const displayText = /^\d{4}-\d{2}-\d{2}_/.test(k) ? k.replace('_',' ') : '振替元情報なし'; const parts = k.split('_'); const activeReservations = (s.makeupReservations || []).filter(r => !r.completed); const res = activeReservations.find(r => r.absKey === k); if ((s.makeupReservations || []).some(r => r.absKey === k && r.completed)) return ''; return `<div class="text-xs p-2 border bg-white rounded flex flex-col gap-1"><span>欠席: ${displayText}</span>` + (res ? `<div class="text-blue-600 font-bold">予約済: ${res.date} ${res.time} <button onclick="cancelMakeup('${s.id}','${k}')" class="bg-red-500 text-white px-1 rounded ml-2">予約取消</button></div>` : `<div class="flex gap-1"><input type="date" id="d-${k}" class="border"><select id="t-${k}">${timeOptions}</select><button onclick="bookMakeup('${s.id}','${k}')" class="bg-blue-600 text-white px-2 rounded">予約</button></div>`) + `</div>`; }).join('') + `</div></div>`; } 
             }); 
 
             timeSlots.forEach(t => {

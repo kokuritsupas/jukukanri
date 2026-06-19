@@ -204,7 +204,9 @@
                 (s.makeupReservations || []).filter(r => r.date === todayStr).forEach(r => { 
                     addEvent(r.time, {name: s.name, makeup:true, id: s.id, time: r.time, sub: "振替", attKey: `makeup_${s.id}_${r.date}_${r.time}`, status: (s.attendance || {})[`makeup_${s.id}_${r.date}_${r.time}`], absKey: r.absKey}); 
                 }); 
-                const absences = Object.keys(s.attendance || {}).filter(k => s.attendance[k] === '欠席' && !k.startsWith('makeup_')); if (absences.length > 0) { makeupList.innerHTML += `<div class="p-3 border rounded bg-slate-50"><strong>${s.name}</strong><div class="grid gap-2 mt-2">` + absences.map(k => { const displayText = /^\d{4}-\d{2}-\d{2}_/.test(k) ? k.replace('_',' ') : '振替元情報なし'; const parts = k.split('_'); const activeReservations = (s.makeupReservations || []).filter(r => !r.completed); const res = activeReservations.find(r => r.absKey === k); if ((s.makeupReservations || []).some(r => r.absKey === k && r.completed)) return ''; return `<div class="text-xs p-2 border bg-white rounded flex flex-col gap-1"><span>欠席: ${displayText}</span>` + (res ? `<div class="text-blue-600 font-bold">予約済: ${res.date} ${res.time} <button onclick="cancelMakeup('${s.id}','${k}')" class="bg-red-500 text-white px-1 rounded ml-2">予約取消</button></div>` : `<div class="flex gap-1"><input type="date" id="d-${k}" class="border"><select id="t-${k}">${timeOptions}</select><button onclick="bookMakeup('${s.id}','${k}')" class="bg-blue-600 text-white px-2 rounded">予約</button></div>`) + `</div>`; }).join('') + `</div></div>`; } 
+                const absences = Object.keys(s.attendance || {}).filter(k => s.attendance[k] === '欠席' && !k.startsWith('makeup_'));
+                const activeAbsences = absences.filter(k => !(s.makeupReservations || []).some(r => r.absKey === k && r.completed));
+                if (activeAbsences.length > 0) { makeupList.innerHTML += `<div class="p-3 border rounded bg-slate-50"><strong>${s.name}</strong><div class="grid gap-2 mt-2">` + activeAbsences.map(k => { const displayText = /^\d{4}-\d{2}-\d{2}_/.test(k) ? k.replace('_',' ') : '振替元情報なし'; const parts = k.split('_'); const activeReservations = (s.makeupReservations || []).filter(r => !r.completed); const res = activeReservations.find(r => r.absKey === k); if ((s.makeupReservations || []).some(r => r.absKey === k && r.completed)) return ''; return `<div class="text-xs p-2 border bg-white rounded flex flex-col gap-1"><span>欠席: ${displayText}</span>` + (res ? `<div class="text-blue-600 font-bold">予約済: ${res.date} ${res.time} <button onclick="cancelMakeup('${s.id}','${k}')" class="bg-red-500 text-white px-1 rounded ml-2">予約取消</button></div>` : `<div class="flex gap-1"><input type="date" id="d-${k}" class="border"><select id="t-${k}">${timeOptions}</select><button onclick="bookMakeup('${s.id}','${k}')" class="bg-blue-600 text-white px-2 rounded">予約</button></div>`) + `</div>`; }).join('') + `</div></div>`; } 
             }); 
 
             timeSlots.forEach(t => {
@@ -235,7 +237,13 @@
                 attendance[attKey] = status;
             }
             let reservations = data.makeupReservations || []; 
-            if (status === '出席' && absKey) { reservations = reservations.map(r => r.absKey === absKey ? {...r, completed:true} : r); await updateDoc(ref, { attendance, makeupReservations: reservations }); } else { await updateDoc(ref, { attendance }); } render(); 
+            if (status === '出席' && absKey) {
+                reservations = reservations.filter(r => r.absKey !== absKey);
+                await updateDoc(ref, { attendance, makeupReservations: reservations });
+            } else {
+                await updateDoc(ref, { attendance });
+            }
+            render(); 
         }; 
         window.bookMakeup = async (id, absKey) => { const date = document.getElementById(`d-${absKey}`).value; const time = document.getElementById(`t-${absKey}`).value; if(!date) return alert("日付を選択"); const ref = doc(db, "students", id); const snap = await getDoc(ref); let data = snap.data(); let res = (data.makeupReservations || []).filter(r => r.absKey !== absKey); res.push({absKey, date, time, completed:false}); await updateDoc(ref, { makeupReservations: res }); alert("予約完了"); render(); }; 
         

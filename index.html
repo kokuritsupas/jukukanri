@@ -146,14 +146,30 @@
         </div>
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => { 
-            if (typeof YubinBango !== 'undefined') new YubinBango.Core(); 
-            const today = new Date();
-            const offset = today.getTimezoneOffset();
-            const localDate = new Date(today.getTime() - (offset * 60 * 1000));
-            document.getElementById('cal-today').value = localDate.toISOString().split('T')[0];
-        });
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, updateDoc, deleteDoc, addDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+        const db = getFirestore(initializeApp({ apiKey: "YOUR_API_KEY", projectId: "juku-kanri-system", storageBucket: "juku-kanri-system.firebasestorage.app", messagingSenderId: "525148833125", appId: "1:525148833125:web:36bee786e3545bd7908d8c" }));
+        let cachedData = []; let trialsData = []; let courseDates = { start: '', end: '' };
+        
+        const timeSlots = ["①17:00", "②18:10", "③19:20", "④20:30", "⑤13:40", "⑥14:50", "⑦16:00", "⑧17:30", "⑨18:40", "⑩19:50", "10:00～", "11:10～", "13:00～", "14:10～", "15:20～"];
+        const summerTimeSlots = ["10:00～", "11:10～", "13:00～", "14:10～", "15:20～", "17:00～", "18:10～", "19:20～", "20:30～"];
+        const subjects = ["算数", "数学", "英語", "国語", "理科", "社会", "数OL", "英OL", "理OL"];
+        const timeOptions = timeSlots.map(t => `<option>${t}</option>`).join('');
+
+        const famContainer = document.getElementById('fam-container');
+        for(let i=1; i<=4; i++) {
+            famContainer.innerHTML += `<div class="p-2 border rounded bg-slate-50"><input type="text" id="fam-name${i}" placeholder="氏名" class="input-styled mb-1"><input type="text" id="fam-kana${i}" placeholder="フリガナ" class="input-styled mb-1"><input type="text" id="fam-rel${i}" placeholder="続柄" class="input-styled mb-1"><input type="text" id="fam-birth${i}" placeholder="生年月日" class="input-styled mb-1" onfocus="(this.type='date')" onblur="(this.type='text')" onchange="document.getElementById('fam-grade${i}').innerText = window.calcGrade(this.value)"><div class="flex items-center gap-1 border-2 border-slate-300 rounded bg-white px-2"><span class="text-xs text-slate-500 font-bold whitespace-nowrap"><span id="fam-grade${i}">-</span></span><input type="text" id="fam-work${i}" placeholder="勤務先/学校名" class="flex-1 p-1 outline-none text-sm"></div></div>`;
+        }
+        
+        // 修正箇所：10:00～などの時刻文字列を正しく数値変換するように改善
+        const getTimeKey = (str) => { 
+            const m = str.match(/(\d{1,2}):(\d{2})/); 
+            return m ? parseInt(m[1]) * 60 + parseInt(m[2]) : 0; 
+        };
+        const getColor = (t) => { const colors = {'①': '#fee2e2', '②': '#fef3c7', '③': '#dcfce7', '④': '#dbeafe', '⑤': '#f1f5f9', '⑥': '#f3e8ff', '⑦': '#ffe4e6', '⑧': '#fef9c3', '⑨': '#ccfbf1', '⑩': '#e0f2fe'}; return colors[t.substring(0,1)] || '#fff59d'; };
+        const createRow = (d="月", t="①17:00", s="算数") => { const div = document.createElement('div'); div.className = "schedule-row"; div.style.backgroundColor = getColor(t); div.style.padding = "5px"; div.style.borderRadius = "4px"; div.style.marginBottom = "5px"; div.innerHTML = `<select class="day border p-2 text-sm bg-white"><option>月</option><option>火</option><option>水</option><option>木</option><option>金</option><option>土</option></select><select class="time border p-2 text-sm bg-white" onchange="this.parentElement.style.backgroundColor = getColor(this.value)">${timeOptions}</select><select class="sub border p-2 text-sm bg-white"><option>算数</option><option>数学</option><option>英語</option><option>国語</option><option>理科</option><option>社会</option></select>`; div.querySelector('.day').value = d; div.querySelector('.time').value = t; div.querySelector('.sub').value = s; return div; };
+        
         window.calcGrade = (birthDate) => {
             if (!birthDate) return "-";
             const birth = new Date(birthDate);
@@ -168,31 +184,13 @@
             if (grade >= 10 && grade <= 12) return `高${grade - 9}`;
             return "既卒";
         };
+
         window.deleteTrial = async (id) => {
             if(!confirm("体験予定を取消しますか？")) return;
-            const { getFirestore, doc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js");
-            const db = getFirestore();
             await deleteDoc(doc(db, "trials", id));
             location.reload();
         };
-    </script>
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-        import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, updateDoc, deleteDoc, addDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
-        const db = getFirestore(initializeApp({ apiKey: "YOUR_API_KEY", projectId: "juku-kanri-system", storageBucket: "juku-kanri-system.firebasestorage.app", messagingSenderId: "525148833125", appId: "1:525148833125:web:36bee786e3545bd7908d8c" }));
-        let cachedData = []; let trialsData = []; let courseDates = { start: '', end: '' };
-        const timeSlots = ["①17:00", "②18:10", "③19:20", "④20:30", "⑤13:40", "⑥14:50", "⑦16:00", "⑧17:30", "⑨18:40", "⑩19:50"];
-        const summerTimeSlots = ["10:00～", "11:10～", "13:00～", "14:10～", "15:20～", "17:00～", "18:10～", "19:20～", "20:30～"];
-        const subjects = ["算数", "数学", "英語", "国語", "理科", "社会", "数OL", "英OL", "理OL"];
-        const timeOptions = timeSlots.map(t => `<option>${t}</option>`).join('');
-        const famContainer = document.getElementById('fam-container');
-        for(let i=1; i<=4; i++) {
-            famContainer.innerHTML += `<div class="p-2 border rounded bg-slate-50"><input type="text" id="fam-name${i}" placeholder="氏名" class="input-styled mb-1"><input type="text" id="fam-kana${i}" placeholder="フリガナ" class="input-styled mb-1"><input type="text" id="fam-rel${i}" placeholder="続柄" class="input-styled mb-1"><input type="text" id="fam-birth${i}" placeholder="生年月日" class="input-styled mb-1" onfocus="(this.type='date')" onblur="(this.type='text')" onchange="document.getElementById('fam-grade${i}').innerText = window.calcGrade(this.value)"><div class="flex items-center gap-1 border-2 border-slate-300 rounded bg-white px-2"><span class="text-xs text-slate-500 font-bold whitespace-nowrap"><span id="fam-grade${i}">-</span></span><input type="text" id="fam-work${i}" placeholder="勤務先/学校名" class="flex-1 p-1 outline-none text-sm"></div></div>`;
-        }
-        const getTimeKey = (str) => { const m = str.match(/(\d{1,2}):(\d{2})/); return m ? parseInt(m[1]) * 60 + parseInt(m[2]) : 0; };
-        const getColor = (t) => { const colors = {'①': '#fee2e2', '②': '#fef3c7', '③': '#dcfce7', '④': '#dbeafe', '⑤': '#f1f5f9', '⑥': '#f3e8ff', '⑦': '#ffe4e6', '⑧': '#fef9c3', '⑨': '#ccfbf1', '⑩': '#e0f2fe'}; return colors[t.substring(0,1)] || '#ffffff'; };
-        const createRow = (d="月", t="①17:00", s="算数") => { const div = document.createElement('div'); div.className = "schedule-row"; div.style.backgroundColor = getColor(t); div.style.padding = "5px"; div.style.borderRadius = "4px"; div.style.marginBottom = "5px"; div.innerHTML = `<select class="day border p-2 text-sm bg-white"><option>月</option><option>火</option><option>水</option><option>木</option><option>金</option><option>土</option></select><select class="time border p-2 text-sm bg-white" onchange="this.parentElement.style.backgroundColor = getColor(this.value)">${timeOptions}</select><select class="sub border p-2 text-sm bg-white"><option>算数</option><option>数学</option><option>英語</option><option>国語</option><option>理科</option><option>社会</option></select>`; div.querySelector('.day').value = d; div.querySelector('.time').value = t; div.querySelector('.sub').value = s; return div; };
-        
+
         window.convertTrial = async (t) => {
             document.getElementById('stu-id').value = Date.now().toString();
             document.getElementById('stu-name').value = t.name || '';
@@ -254,8 +252,8 @@
                     container.innerHTML += `<div class="sm-row"><input type="date" value="${sess.date}" class="input-styled sm-input s-date"><select class="input-styled sm-input s-time">${summerTimeSlots.map(t=>`<option ${sess.time===t?'selected':''}>${t}</option>`).join('')}</select><select class="input-styled sm-input s-sub">${subjects.map(sub=>`<option ${sess.sub===sub?'selected':''}>${sub}</option>`).join('')}</select></div>`;
                     
                     if (sess.date === todayStr) {
-                        let tKey = sess.time.split('～')[0];
-                        if (!timeGroups[tKey]) timeGroups[tKey] = { title: tKey + "～", events: [], timeVal: getTimeKey(tKey) };
+                        let tKey = sess.time;
+                        if (!timeGroups[tKey]) timeGroups[tKey] = { title: tKey + "の予定", events: [], timeVal: getTimeKey(tKey) };
                         timeGroups[tKey].events.push({name: s.name, id: s.id, time: sess.time, sub: sess.sub + " (講習)", attKey: `sm_${sess.date}_${sess.time}`, status: (s.attendance || {})[`sm_${sess.date}_${sess.time}`], isSummer: true});
                     }
                 });
@@ -269,13 +267,13 @@
                 studentList.innerHTML += `<div class="student-row"><span class="font-bold text-slate-400 text-sm">${index + 1}.</span><div class="student-main-info"><span onclick="window.editMode('${s.id}')" class="cursor-pointer font-bold text-blue-600 underline">${s.name}</span><span class="text-xs text-slate-500">${s.grade || ''}</span></div><span class="rem-count ${remaining === 0 ? 'rem-zero' : 'rem-positive'}">振替:${remaining}</span><div class="student-schedules">${schedHtml}</div></div>`;
                 
                 (s.schedules || []).filter(sc => sc.day === dayStr).forEach(sc => { 
-                    let tKey = sc.time.substring(1);
-                    if (!timeGroups[tKey]) timeGroups[tKey] = { title: tKey + "～", events: [], timeVal: getTimeKey(tKey) };
+                    let tKey = sc.time;
+                    if (!timeGroups[tKey]) timeGroups[tKey] = { title: tKey + "の予定", events: [], timeVal: getTimeKey(tKey) };
                     timeGroups[tKey].events.push({name: s.name, id: s.id, time: sc.time, sub: sc.sub, attKey: `${todayStr}_${sc.time}`, status: (s.attendance || {})[`${todayStr}_${sc.time}`]}); 
                 });
                 (s.makeupReservations || []).filter(r => !r.completed && r.date === todayStr).forEach(r => {
-                    let tKey = r.time.substring(1);
-                    if (!timeGroups[tKey]) timeGroups[tKey] = { title: tKey + "～", events: [], timeVal: getTimeKey(tKey) };
+                    let tKey = r.time;
+                    if (!timeGroups[tKey]) timeGroups[tKey] = { title: tKey + "の予定", events: [], timeVal: getTimeKey(tKey) };
                     timeGroups[tKey].events.push({name: s.name, id: s.id, time: r.time, sub: r.subject + " (振替)", attKey: `makeup_${s.id}_${r.date}_${r.time}`, absKey: r.absKey, makeup: true, status: (s.attendance || {})[`makeup_${s.id}_${r.date}_${r.time}`]});
                 });
                 
@@ -296,14 +294,14 @@
                     trialList.innerHTML += `<div class="p-2 border rounded flex justify-between items-center text-sm"><div><strong>${t.name}</strong> ${[t.grade, t.sub].filter(Boolean).join(" ")}<br>${t.date} ${t.time}</div><div class="flex gap-1"><button onclick="window.convertTrial({id:'${t.id}', name:'${t.name}', grade:'${t.grade}'})" class="bg-blue-600 text-white px-2 py-1 rounded">入塾へ</button><button onclick="window.deleteTrial('${t.id}')" class="bg-red-500 text-white px-2 py-1 rounded">取消</button></div></div>`;
                 }
                 if(t.date === todayStr) {
-                    let tKey = t.time.substring(1);
-                    if (!timeGroups[tKey]) timeGroups[tKey] = { title: tKey + "～", events: [], timeVal: getTimeKey(tKey) };
+                    let tKey = t.time;
+                    if (!timeGroups[tKey]) timeGroups[tKey] = { title: tKey + "の予定", events: [], timeVal: getTimeKey(tKey) };
                     timeGroups[tKey].events.push({name: t.name + " (体験)", id: t.id, isTrial: true, time: t.time, sub: [t.grade, t.sub].filter(Boolean).join(" ") || "体験", attKey: `trial_${t.id}`, status: (t.attendance || {})[`trial_${t.id}`]});
                 }
             });
 
             Object.keys(timeGroups).sort((a,b) => timeGroups[a].timeVal - timeGroups[b].timeVal).forEach(k => {
-                todayList.innerHTML += `<div class="font-bold text-slate-700 mt-6 mb-2 border-b border-slate-300" style="max-width: 600px; margin: 12px auto 4px auto;">${timeGroups[k].title}の予定</div>`;
+                todayList.innerHTML += `<div class="font-bold text-slate-700 mt-6 mb-2 border-b border-slate-300" style="max-width: 600px; margin: 12px auto 4px auto;">${timeGroups[k].title}</div>`;
                 timeGroups[k].events.forEach(ev => {
                     todayList.innerHTML += `<div class="grid-row" style="background:${ev.isSummer ? '#fff59d' : getColor(ev.time)}"><strong>${ev.name}${ev.makeup ? '<br><span class="text-xs text-blue-600">(振替)</span>' : ''}</strong><span style="word-break:break-word;">${ev.sub}</span><div class="flex gap-1"><button onclick="setAtt('${ev.id}','${ev.attKey}','出席','${ev.absKey || ''}', ${!!ev.isTrial || false})" class="att-btn ${ev.status === '出席' ? 'bg-blue-500 text-white' : ''}">出</button><button onclick="setAtt('${ev.id}','${ev.attKey}','欠席','${ev.absKey || ''}', ${!!ev.isTrial || false})" class="att-btn ${ev.status === '欠席' ? 'bg-red-500 text-white' : ''}">欠</button><button onclick="setAtt('${ev.id}','${ev.attKey}','取消','${ev.absKey || ''}', ${!!ev.isTrial || false})" class="att-btn">取</button></div></div>`;
                 });
@@ -377,6 +375,14 @@
         onSnapshot(collection(db, "trials"), (snap) => { trialsData = snap.docs.map(doc => ({id: doc.id, ...doc.data()})); render(); });
         document.getElementById('cancel-trial-convert').onclick = () => { if(!confirm('体験からの移行をキャンセルしますか？')) return; window.pendingTrialConversion = null; location.reload(); };
         document.getElementById('clear-btn').onclick = () => location.reload(); document.getElementById('delete-btn').onclick = async () => { if(!confirm("削除しますか？")) return; await deleteDoc(doc(db, "students", document.getElementById('stu-id').value)); location.reload(); };
+        
+        document.addEventListener('DOMContentLoaded', () => { 
+            if (typeof YubinBango !== 'undefined') new YubinBango.Core(); 
+            const today = new Date();
+            const offset = today.getTimezoneOffset();
+            const localDate = new Date(today.getTime() - (offset * 60 * 1000));
+            document.getElementById('cal-today').value = localDate.toISOString().split('T')[0];
+        });
     </script>
 </body>
 </html>

@@ -39,7 +39,7 @@
         
         .makeup-container { padding: 10px; }
         .makeup-group { margin-bottom: 16px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
-        .makeup-name-header { background: #f1f5f9; padding: 8px; font-weight: bold; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; }
+        .makeup-name-header { background: #f1f5f9; padding: 8px; font-weight: bold; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; cursor: pointer; }
         .makeup-row { display: grid; grid-template-columns: 1.2fr 1.5fr auto; align-items: center; gap: 6px; padding: 8px; border-bottom: 1px solid #f1f5f9; background: white; font-size: 12px; }
         .makeup-orig { color: #475569; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .makeup-inputs { display: flex; gap: 2px; }
@@ -105,8 +105,18 @@
 
             <div id="tab2" class="tab-content"><div id="student-list"></div></div>
             <div id="tab3" class="tab-content space-y-4">
-                <div style="max-width: 600px; margin: 0 auto;">
+                <div style="max-width: 600px; margin: 0 auto;" class="space-y-2">
                     <input type="date" id="cal-today" class="input-styled font-bold" style="color: #000 !important;">
+                    <div class="p-3 bg-slate-100 rounded-lg border space-y-2">
+                        <div class="text-xs font-bold text-slate-700">個人別期間スケジュール抽出</div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                            <select id="range-student" class="input-styled !p-2 text-xs"><option value="">生徒を選択...</option></select>
+                            <input type="date" id="range-start" class="input-styled !p-2 text-xs">
+                            <input type="date" id="range-end" class="input-styled !p-2 text-xs">
+                        </div>
+                        <button onclick="extractPersonalRange()" class="w-full bg-slate-700 text-white py-2 rounded text-xs font-bold">抽出する</button>
+                    </div>
+                    <div id="range-result-area"></div>
                 </div>
                 <div id="today-list" class="space-y-3 pt-2"></div>
             </div>
@@ -127,22 +137,13 @@
                 <select id="trial-sub" class="input-styled">
                     <option value="">教科を選択...</option>
                     <option>算数</option><option>数学</option><option>英語</option><option>国語</option><option>理科</option><option>社会</option>
+                    <option>数学OL</option><option>英語OL</option><option>理科OL</option>
                 </select>
                 <input type="date" id="trial-date" class="input-styled">
                 <select id="trial-time" class="input-styled"><option>①17:00</option><option>②18:10</option><option>③19:20</option><option>④20:30</option><option>⑤13:40</option><option>⑥14:50</option><option>⑦16:00</option><option>⑧17:30</option><option>⑨18:40</option><option>⑩19:50</option></select>
                 <button id="save-trial" class="btn-main">体験予約を保存</button>
             </div>
-            <div id="tab7" class="tab-content p-4">
-                <div class="bg-slate-100 p-3 rounded-lg mb-4">
-                    <h2 class="font-bold text-sm mb-2">講習期間設定</h2>
-                    <div class="grid grid-cols-2 gap-2">
-                        <input type="date" id="course-start" class="input-styled !p-1 text-sm">
-                        <input type="date" id="course-end" class="input-styled !p-1 text-sm">
-                    </div>
-                    <button onclick="saveCourseDates()" class="mt-2 w-full bg-slate-600 text-white py-1 rounded text-xs font-bold">期間を保存</button>
-                </div>
-                <div id="summer-container" class="space-y-2"></div>
-            </div>
+            <div id="tab7" class="tab-content makeup-container"><div id="summer-container" class="space-y-1"></div></div>
         </div>
     </div>
 
@@ -151,24 +152,26 @@
         import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, updateDoc, deleteDoc, addDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
         const db = getFirestore(initializeApp({ apiKey: "YOUR_API_KEY", projectId: "juku-kanri-system", storageBucket: "juku-kanri-system.firebasestorage.app", messagingSenderId: "525148833125", appId: "1:525148833125:web:36bee786e3545bd7908d8c" }));
         let cachedData = []; let trialsData = []; let courseDates = { start: '', end: '' };
+        let openMakeupIds = {};
+        let openSummerIds = {};
         
         const timeSlots = ["①17:00", "②18:10", "③19:20", "④20:30", "⑤13:40", "⑥14:50", "⑦16:00", "⑧17:30", "⑨18:40", "⑩19:50", "10:00～", "11:10～", "13:00～", "14:10～", "15:20～"];
         const summerTimeSlots = ["10:00～", "11:10～", "13:00～", "14:10～", "15:20～", "17:00～", "18:10～", "19:20～", "20:30～"];
-        const subjects = ["算数", "数学", "英語", "国語", "理科", "社会", "数OL", "英OL", "理OL"];
+        const subjects = ["算数", "数学", "英語", "国語", "理科", "社会", "数OL", "英OL", "理OL", "数学OL", "英語OL", "理科OL"];
         const timeOptions = timeSlots.map(t => `<option>${t}</option>`).join('');
+        const subjectOptions = subjects.map(sub => `<option>${sub}</option>`).join('');
 
         const famContainer = document.getElementById('fam-container');
         for(let i=1; i<=4; i++) {
             famContainer.innerHTML += `<div class="p-2 border rounded bg-slate-50"><input type="text" id="fam-name${i}" placeholder="氏名" class="input-styled mb-1"><input type="text" id="fam-kana${i}" placeholder="フリガナ" class="input-styled mb-1"><input type="text" id="fam-rel${i}" placeholder="続柄" class="input-styled mb-1"><input type="text" id="fam-birth${i}" placeholder="生年月日" class="input-styled mb-1" onfocus="(this.type='date')" onblur="(this.type='text')" onchange="document.getElementById('fam-grade${i}').innerText = window.calcGrade(this.value)"><div class="flex items-center gap-1 border-2 border-slate-300 rounded bg-white px-2"><span class="text-xs text-slate-500 font-bold whitespace-nowrap"><span id="fam-grade${i}">-</span></span><input type="text" id="fam-work${i}" placeholder="勤務先/学校名" class="flex-1 p-1 outline-none text-sm"></div></div>`;
         }
         
-        // 修正箇所：10:00～などの時刻文字列を正しく数値変換するように改善
         const getTimeKey = (str) => { 
             const m = str.match(/(\d{1,2}):(\d{2})/); 
             return m ? parseInt(m[1]) * 60 + parseInt(m[2]) : 0; 
         };
         const getColor = (t) => { const colors = {'①': '#fee2e2', '②': '#fef3c7', '③': '#dcfce7', '④': '#dbeafe', '⑤': '#f1f5f9', '⑥': '#f3e8ff', '⑦': '#ffe4e6', '⑧': '#fef9c3', '⑨': '#ccfbf1', '⑩': '#e0f2fe'}; return colors[t.substring(0,1)] || '#fff59d'; };
-        const createRow = (d="月", t="①17:00", s="算数") => { const div = document.createElement('div'); div.className = "schedule-row"; div.style.backgroundColor = getColor(t); div.style.padding = "5px"; div.style.borderRadius = "4px"; div.style.marginBottom = "5px"; div.innerHTML = `<select class="day border p-2 text-sm bg-white"><option>月</option><option>火</option><option>水</option><option>木</option><option>金</option><option>土</option></select><select class="time border p-2 text-sm bg-white" onchange="this.parentElement.style.backgroundColor = getColor(this.value)">${timeOptions}</select><select class="sub border p-2 text-sm bg-white"><option>算数</option><option>数学</option><option>英語</option><option>国語</option><option>理科</option><option>社会</option></select>`; div.querySelector('.day').value = d; div.querySelector('.time').value = t; div.querySelector('.sub').value = s; return div; };
+        const createRow = (d="月", t="①17:00", s="算数") => { const div = document.createElement('div'); div.className = "schedule-row"; div.style.backgroundColor = getColor(t); div.style.padding = "5px"; div.style.borderRadius = "4px"; div.style.marginBottom = "5px"; div.innerHTML = `<select class="day border p-2 text-sm bg-white"><option>月</option><option>火</option><option>水</option><option>木</option><option>金</option><option>土</option></select><select class="time border p-2 text-sm bg-white" onchange="this.parentElement.style.backgroundColor = getColor(this.value)">${timeOptions}</select><select class="sub border p-2 text-sm bg-white">${subjectOptions}</select>`; div.querySelector('.day').value = d; div.querySelector('.time').value = t; div.querySelector('.sub').value = s; return div; };
         
         window.calcGrade = (birthDate) => {
             if (!birthDate) return "-";
@@ -208,6 +211,16 @@
             alert("期間を保存しました");
         };
 
+        window.toggleMakeupGroup = (id) => {
+            openMakeupIds[id] = !openMakeupIds[id];
+            render();
+        };
+
+        window.toggleSummerGroup = (id) => {
+            openSummerIds[id] = !openSummerIds[id];
+            render();
+        };
+
         window.addSummerRow = (id) => {
             const container = document.getElementById(`sm-${id}`);
             const div = document.createElement('div');
@@ -224,6 +237,144 @@
             alert("保存しました");
         };
 
+        window.extractPersonalRange = () => {
+            const studentId = document.getElementById('range-student').value;
+            const startDateStr = document.getElementById('range-start').value;
+            const endDateStr = document.getElementById('range-end').value;
+            const resultArea = document.getElementById('range-result-area');
+
+            if (!studentId) {
+                alert("生徒を選択してください");
+                return;
+            }
+            if (!startDateStr || !endDateStr) {
+                alert("開始日と終了日の両方を指定してください");
+                return;
+            }
+
+            const s = cachedData.find(item => item.id === studentId);
+            if (!s) {
+                resultArea.innerHTML = "<div class='p-2 text-xs text-red-500 bg-white border rounded'>生徒データが見つかりません</div>";
+                return;
+            }
+
+            const startDate = new Date(startDateStr);
+            const endDate = new Date(endDateStr);
+            if (startDate > endDate) {
+                alert("開始日は終了日より前の日付を指定してください");
+                return;
+            }
+
+            let events = [];
+            const dayOfWeekNames = ["日", "月", "火", "水", "木", "金", "土"];
+            const attendanceMap = s.attendance || {};
+
+            let curr = new Date(startDate);
+            while (curr <= endDate) {
+                const yyyy = curr.getFullYear();
+                const mm = String(curr.getMonth() + 1).padStart(2, '0');
+                const dd = String(curr.getDate()).padStart(2, '0');
+                const dateStr = `${yyyy}/${mm}/${dd}`;
+                const dashDateStr = `${yyyy}-${mm}-${dd}`;
+                const dayOfWeekStr = dayOfWeekNames[curr.getDay()];
+
+                (s.schedules || []).forEach(sc => {
+                    if (sc.day === dayOfWeekStr) {
+                        const attKey = `${dashDateStr}_${sc.time}`;
+                        const status = attendanceMap[attKey];
+                        if (status !== '無' && status !== '欠席') {
+                            events.push({ date: dateStr, dayOfWeek: dayOfWeekStr, time: sc.time, sub: sc.sub, type: '通常' });
+                        }
+                    }
+                });
+
+                curr.setDate(curr.getDate() + 1);
+            }
+
+            (s.summerSessions || []).forEach(sess => {
+                if (sess.date) {
+                    const sessDate = new Date(sess.date);
+                    if (sessDate >= startDate && sessDate <= endDate) {
+                        const attKey = `sm_${sess.date}_${sess.time}`;
+                        const status = attendanceMap[attKey];
+                        if (status !== '無' && status !== '欠席') {
+                            const formattedDate = sess.date.replace(/-/g, '/');
+                            const sessDayOfWeek = dayOfWeekNames[sessDate.getDay()];
+                            events.push({ date: formattedDate, dayOfWeek: sessDayOfWeek, time: sess.time, sub: sess.sub + " (講習)", type: '講習' });
+                        }
+                    }
+                }
+            });
+
+            (s.makeupReservations || []).forEach(r => {
+                if (!r.completed && r.date) {
+                    const rDate = new Date(r.date);
+                    if (rDate >= startDate && rDate <= endDate) {
+                        const attKey = `makeup_${s.id}_${r.date}_${r.time}`;
+                        const status = attendanceMap[attKey];
+                        if (status !== '無' && status !== '欠席') {
+                            const formattedDate = r.date.replace(/-/g, '/');
+                            const rDayOfWeek = dayOfWeekNames[rDate.getDay()];
+                            events.push({ date: formattedDate, dayOfWeek: rDayOfWeek, time: r.time, sub: (r.subject || "授業") + " (振替)", type: '振替' });
+                        }
+                    }
+                }
+            });
+
+            events.sort((a, b) => {
+                if (a.date !== b.date) return a.date.localeCompare(b.date);
+                return getTimeKey(a.time) - getTimeKey(b.time);
+            });
+
+            if (events.length === 0) {
+                resultArea.innerHTML = `<div class='p-3 text-xs text-slate-600 bg-white border rounded'>${s.name}さんの指定期間 (${startDateStr} ～ ${endDateStr}) の予定はありません。</div>`;
+                return;
+            }
+
+            let html = `
+                <div class='bg-white border rounded shadow-sm overflow-hidden text-xs'>
+                    <div class='p-2 bg-slate-100 font-bold border-b text-slate-800 flex justify-between items-center'>
+                        <span>${s.name}さんのスケジュール一覧 (${startDateStr} ～ ${endDateStr})</span>
+                        <div class="flex items-center gap-2">
+                            <span class='text-slate-500 font-normal'>全 ${events.length} 件</span>
+                            <button onclick="document.getElementById('range-result-area').innerHTML=''" class="bg-slate-300 hover:bg-slate-400 text-slate-800 px-2 py-0.5 rounded font-bold text-[10px]">閉じる</button>
+                        </div>
+                    </div>
+                    <div class='overflow-x-auto'>
+                        <table class='w-full text-left border-collapse'>
+                            <thead>
+                                <tr class='bg-slate-50 text-slate-700 border-b'>
+                                    <th class='p-2 border-r'>日付</th>
+                                    <th class='p-2 border-r'>曜日</th>
+                                    <th class='p-2 border-r'>時間</th>
+                                    <th class='p-2 border-r'>教科</th>
+                                    <th class='p-2'>区分</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+
+            events.forEach(ev => {
+                html += `
+                    <tr class='border-b hover:bg-slate-50'>
+                        <td class='p-2 border-r font-mono whitespace-nowrap'>${ev.date}</td>
+                        <td class='p-2 border-r text-center whitespace-nowrap'>${ev.dayOfWeek}</td>
+                        <td class='p-2 border-r whitespace-nowrap'>${ev.time}</td>
+                        <td class='p-2 border-r font-semibold'>${ev.sub}</td>
+                        <td class='p-2 whitespace-nowrap'>${ev.type}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+            resultArea.innerHTML = html;
+        };
+
         const render = () => { 
             const todayStr = document.getElementById('cal-today').value; 
             const dayStr = ["日", "月", "火", "水", "木", "金", "土"][new Date(todayStr).getDay()]; 
@@ -232,33 +383,53 @@
             const makeupList = document.getElementById('makeup-list'); 
             const trialList = document.getElementById('trial-list');
             const searchBox = document.getElementById('search-box'); 
+            const rangeStudent = document.getElementById('range-student');
             const summerContainer = document.getElementById('summer-container');
             
             studentList.innerHTML = ""; todayList.innerHTML = ""; trialList.innerHTML = ""; 
-            summerContainer.innerHTML = "<h2 class='font-bold mb-4'>講習管理</h2>";
+            summerContainer.innerHTML = `
+                <div class="bg-slate-100 p-3 rounded-lg mb-4">
+                    <h2 class="font-bold text-sm mb-2">講習期間設定</h2>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="date" id="course-start" class="input-styled !p-1 text-sm" value="${courseDates.start || ''}">
+                        <input type="date" id="course-end" class="input-styled !p-1 text-sm" value="${courseDates.end || ''}">
+                    </div>
+                    <button onclick="saveCourseDates()" class="mt-2 w-full bg-slate-600 text-white py-1 rounded text-xs font-bold">期間を保存</button>
+                </div>
+                <div class="font-bold text-lg p-2 bg-slate-100 rounded-t">講習管理</div>
+            `;
             makeupList.innerHTML = "<div class='font-bold text-lg p-2 bg-slate-100 rounded-t'>振替指定</div>"; 
             searchBox.innerHTML = '<option value="">名前を選択してください...</option>'; 
+            const currentSelectedRangeStudent = rangeStudent.value;
+            rangeStudent.innerHTML = '<option value="">生徒を選択...</option>';
             
             let timeGroups = {}; 
             
             cachedData.forEach((s, index) => { 
                 searchBox.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+                rangeStudent.innerHTML += `<option value="${s.id}" ${s.id === currentSelectedRangeStudent ? 'selected' : ''}>${s.name}</option>`;
                 
-                const details = document.createElement('details');
-                details.className = "mb-2 border rounded-lg bg-white overflow-hidden shadow-sm";
-                details.innerHTML = `<summary class="p-3 font-bold bg-slate-100 cursor-pointer hover:bg-slate-200 flex justify-between items-center">${s.name} <span class="text-[10px] text-blue-600 bg-white px-2 py-0.5 rounded-full border border-blue-200">${(s.summerSessions||[]).length}コマ</span></summary><div class="p-3 border-t bg-slate-50" id="sm-${s.id}"></div>`;
-                const container = details.querySelector(`#sm-${s.id}`);
-                (s.summerSessions || []).forEach((sess) => {
-                    container.innerHTML += `<div class="sm-row"><input type="date" value="${sess.date}" class="input-styled sm-input s-date"><select class="input-styled sm-input s-time">${summerTimeSlots.map(t=>`<option ${sess.time===t?'selected':''}>${t}</option>`).join('')}</select><select class="input-styled sm-input s-sub">${subjects.map(sub=>`<option ${sess.sub===sub?'selected':''}>${sub}</option>`).join('')}</select></div>`;
-                    
-                    if (sess.date === todayStr) {
-                        let tKey = sess.time;
-                        if (!timeGroups[tKey]) timeGroups[tKey] = { title: tKey + "の予定", events: [], timeVal: getTimeKey(tKey) };
-                        timeGroups[tKey].events.push({name: s.name, id: s.id, time: sess.time, sub: sess.sub + " (講習)", attKey: `sm_${sess.date}_${sess.time}`, status: (s.attendance || {})[`sm_${sess.date}_${sess.time}`], isSummer: true});
-                    }
-                });
+                let summerGroupDiv = document.createElement('div');
+                summerGroupDiv.className = "makeup-group";
+                let isSummerOpen = !!openSummerIds[s.id];
+                summerGroupDiv.innerHTML = `<div class="makeup-name-header" onclick="toggleSummerGroup('${s.id}')"><span>${s.name}</span><span class="text-xs text-blue-600 bg-white px-2 py-0.5 rounded-full border border-blue-200">${(s.summerSessions||[]).length}コマ ${isSummerOpen ? '▲' : '▼'}</span></div><div class="p-3 bg-white ${isSummerOpen ? '' : 'hidden'}" id="sm-${s.id}"></div>`;
+                const container = summerGroupDiv.querySelector(`#sm-${s.id}`);
+                
+                if((s.summerSessions || []).length === 0) {
+                    container.innerHTML += `<div class="sm-row"><input type="date" class="input-styled sm-input s-date"><select class="input-styled sm-input s-time">${summerTimeSlots.map(t=>`<option>${t}</option>`).join('')}</select><select class="input-styled sm-input s-sub">${subjects.map(sub=>`<option>${sub}</option>`).join('')}</select></div>`;
+                } else {
+                    (s.summerSessions || []).forEach((sess) => {
+                        container.innerHTML += `<div class="sm-row"><input type="date" value="${sess.date}" class="input-styled sm-input s-date"><select class="input-styled sm-input s-time">${summerTimeSlots.map(t=>`<option ${sess.time===t?'selected':''}>${t}</option>`).join('')}</select><select class="input-styled sm-input s-sub">${subjects.map(sub=>`<option ${sess.sub===sub?'selected':''}>${sub}</option>`).join('')}</select></div>`;
+                        
+                        if (sess.date === todayStr) {
+                            let tKey = sess.time;
+                            if (!timeGroups[tKey]) timeGroups[tKey] = { title: tKey + "の予定", events: [], timeVal: getTimeKey(tKey) };
+                            timeGroups[tKey].events.push({name: s.name, id: s.id, time: sess.time, sub: sess.sub + " (講習)", attKey: `sm_${sess.date}_${sess.time}`, status: (s.attendance || {})[`sm_${sess.date}_${sess.time}`], isSummer: true});
+                        }
+                    });
+                }
                 container.innerHTML += `<div class="mt-3 flex gap-2 justify-end"><button onclick="addSummerRow('${s.id}')" class="text-xs bg-slate-500 text-white px-3 py-1.5 rounded">＋行</button><button onclick="saveSummer('${s.id}')" class="bg-blue-600 text-white px-4 py-1.5 rounded text-xs font-bold">保存</button></div>`;
-                summerContainer.appendChild(details);
+                summerContainer.appendChild(summerGroupDiv);
 
                 const allAbsences = Object.keys(s.attendance || {}).filter(k => s.attendance[k] === '欠席' && !k.startsWith('makeup_') && !k.startsWith('sm_'));
                 const activeReservations = (s.makeupReservations || []).filter(r => !r.completed);
@@ -280,10 +451,12 @@
                 if (allAbsences.length > 0) {
                     let groupDiv = document.createElement('div');
                     groupDiv.className = "makeup-group";
-                    groupDiv.innerHTML = `<div class="makeup-name-header"><span>${s.name}</span><span>振替残: ${remaining}</span></div>`;
+                    let isMakeupOpen = !!openMakeupIds[s.id];
+                    groupDiv.innerHTML = `<div class="makeup-name-header" onclick="toggleMakeupGroup('${s.id}')"><span>${s.name}</span><span>振替残: ${remaining} ${isMakeupOpen ? '▲' : '▼'}</span></div><div class="${isMakeupOpen ? '' : 'hidden'}" id="makeup-body-${s.id}"></div>`;
+                    let bodyContainer = groupDiv.querySelector(`#makeup-body-${s.id}`);
                     allAbsences.forEach(k => { 
                         const res = activeReservations.find(r => r.absKey === k);
-                        groupDiv.innerHTML += `<div class="makeup-row"><div class="makeup-orig">${k.replace('_',' ')}</div>` + (res ? `<div class="makeup-inputs justify-center text-blue-600">${res.date} ${res.time}</div><button onclick="cancelMakeup('${s.id}','${k}')" class="cancel-btn">取消</button>` : `<div class="makeup-inputs"><input type="date" id="d-${k}"><select id="t-${k}">${timeOptions}</select></div><button onclick="bookMakeup('${s.id}','${k}','授業')" class="makeup-btn">予約</button>`) + `</div>`; 
+                        bodyContainer.innerHTML += `<div class="makeup-row"><div class="makeup-orig">${k.replace('_',' ')}</div>` + (res ? `<div class="makeup-inputs justify-center text-blue-600">${res.date} ${res.time}</div><button onclick="cancelMakeup('${s.id}','${k}')" class="cancel-btn">取消</button>` : `<div class="makeup-inputs"><input type="date" id="d-${k}"><select id="t-${k}">${timeOptions}</select></div><button onclick="bookMakeup('${s.id}','${k}','授業')" class="makeup-btn">予約</button>`) + `</div>`; 
                     });
                     makeupList.appendChild(groupDiv);
                 }
@@ -303,7 +476,7 @@
             Object.keys(timeGroups).sort((a,b) => timeGroups[a].timeVal - timeGroups[b].timeVal).forEach(k => {
                 todayList.innerHTML += `<div class="font-bold text-slate-700 mt-6 mb-2 border-b border-slate-300" style="max-width: 600px; margin: 12px auto 4px auto;">${timeGroups[k].title}</div>`;
                 timeGroups[k].events.forEach(ev => {
-                    todayList.innerHTML += `<div class="grid-row" style="background:${ev.isSummer ? '#fff59d' : getColor(ev.time)}"><strong>${ev.name}${ev.makeup ? '<br><span class="text-xs text-blue-600">(振替)</span>' : ''}</strong><span style="word-break:break-word;">${ev.sub}</span><div class="flex gap-1"><button onclick="setAtt('${ev.id}','${ev.attKey}','出席','${ev.absKey || ''}', ${!!ev.isTrial || false})" class="att-btn ${ev.status === '出席' ? 'bg-blue-500 text-white' : ''}">出</button><button onclick="setAtt('${ev.id}','${ev.attKey}','欠席','${ev.absKey || ''}', ${!!ev.isTrial || false})" class="att-btn ${ev.status === '欠席' ? 'bg-red-500 text-white' : ''}">欠</button><button onclick="setAtt('${ev.id}','${ev.attKey}','取消','${ev.absKey || ''}', ${!!ev.isTrial || false})" class="att-btn">取</button></div></div>`;
+                    todayList.innerHTML += `<div class="grid-row" style="background:${ev.isSummer ? '#fff59d' : getColor(ev.time)}"><strong>${ev.name}${ev.makeup ? '<br><span class="text-xs text-blue-600">(振替)</span>' : ''}</strong><span style="word-break:break-word;">${ev.sub}</span><div class="flex gap-1"><button onclick="setAtt('${ev.id}','${ev.attKey}','出席','${ev.absKey || ''}', ${!!ev.isTrial || false})" class="att-btn ${ev.status === '出席' ? 'bg-blue-500 text-white' : ''}">出</button><button onclick="setAtt('${ev.id}','${ev.attKey}','欠席','${ev.absKey || ''}', ${!!ev.isTrial || false})" class="att-btn ${ev.status === '欠席' ? 'bg-red-500 text-white' : ''}">欠</button><button onclick="setAtt('${ev.id}','${ev.attKey}','無','${ev.absKey || ''}', ${!!ev.isTrial || false})" class="att-btn ${ev.status === '無' ? 'bg-slate-500 text-white' : ''}">無</button><button onclick="setAtt('${ev.id}','${ev.attKey}','取消','${ev.absKey || ''}', ${!!ev.isTrial || false})" class="att-btn">取</button></div></div>`;
                 });
             });
         }; 
@@ -370,7 +543,7 @@
         
         document.getElementById('save-trial').onclick = async () => { await addDoc(collection(db, "trials"), { name: document.getElementById('trial-name').value, grade: document.getElementById('trial-grade').value, sub: document.getElementById('trial-sub').value, date: document.getElementById('trial-date').value, time: document.getElementById('trial-time').value, registered: false }); location.reload(); };
         document.querySelectorAll('nav button').forEach((btn, i) => { btn.onclick = () => { document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active')); document.querySelectorAll('.nav-btn').forEach(n => n.classList.remove('nav-active-tab')); document.querySelectorAll('.tab-content')[i].classList.add('active'); btn.classList.add('nav-active-tab'); }; }); 
-        onSnapshot(doc(db, "system", "config"), (doc) => { if(doc.exists()){ courseDates = doc.data(); document.getElementById('course-start').value = courseDates.start || ''; document.getElementById('course-end').value = courseDates.end || ''; } });
+        onSnapshot(doc(db, "system", "config"), (doc) => { if(doc.exists()){ courseDates = doc.data(); const cs = document.getElementById('course-start'); const ce = document.getElementById('course-end'); if(cs) cs.value = courseDates.start || ''; if(ce) ce.value = courseDates.end || ''; } });
         onSnapshot(collection(db, "students"), async (snap) => { cachedData = snap.docs.map(doc => ({id: doc.id, ...doc.data()})); render(); });
         onSnapshot(collection(db, "trials"), (snap) => { trialsData = snap.docs.map(doc => ({id: doc.id, ...doc.data()})); render(); });
         document.getElementById('cancel-trial-convert').onclick = () => { if(!confirm('体験からの移行をキャンセルしますか？')) return; window.pendingTrialConversion = null; location.reload(); };

@@ -6,6 +6,10 @@
     <title>塾管理システム</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://yubinbango.github.io/yubinbango/yubinbango.js" charset="UTF-8"></script>
+    <!-- jsPDF の読み込み -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- html2canvas の読み込み -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         body { font-family: sans-serif; overflow-x:hidden; touch-action: manipulation; }
         .tab-content { display: none; }
@@ -50,6 +54,13 @@
         .sm-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; margin-bottom: 4px; align-items: center; }
         .sm-input { height: 36px !important; font-size: 12px !important; padding: 2px !important; }
         
+        @media print {
+            body * { visibility: hidden; }
+            #range-result-area, #range-result-area * { visibility: visible; }
+            #range-result-area { position: absolute; left: 0; top: 0; width: 100%; }
+            .no-print { display: none !important; }
+        }
+
         @media (min-width: 768px) {
             .max-w-xl { max-width: 1100px !important; display: grid !important; grid-template-columns: 200px 1fr; gap: 20px; align-items: start; }
             nav { flex-direction: column !important; border-bottom: none !important; background: #f1f5f9 !important; border-radius: 8px; }
@@ -331,48 +342,94 @@
                 return;
             }
 
+            let pages = [];
+            for (let i = 0; i < events.length; i += 20) {
+                pages.push(events.slice(i, i + 20));
+            }
+
             let html = `
-                <div class='bg-white border rounded shadow-sm overflow-hidden text-xs'>
-                    <div class='p-2 bg-slate-100 font-bold border-b text-slate-800 flex justify-between items-center'>
-                        <span>${s.name}さんのスケジュール一覧 (${startDateStr} ～ ${endDateStr})</span>
-                        <div class="flex items-center gap-2">
-                            <span class='text-slate-500 font-normal'>全 ${events.length} 件</span>
-                            <button onclick="document.getElementById('range-result-area').innerHTML=''" class="bg-slate-300 hover:bg-slate-400 text-slate-800 px-2 py-0.5 rounded font-bold text-[10px]">閉じる</button>
-                        </div>
-                    </div>
-                    <div class='overflow-x-auto'>
-                        <table class='w-full text-left border-collapse'>
-                            <thead>
-                                <tr class='bg-slate-50 text-slate-700 border-b'>
-                                    <th class='p-2 border-r'>日付</th>
-                                    <th class='p-2 border-r'>曜日</th>
-                                    <th class='p-2 border-r'>時間</th>
-                                    <th class='p-2 border-r'>教科</th>
-                                    <th class='p-2'>区分</th>
-                                </tr>
-                            </thead>
-                            <tbody>
+                <div class="no-print flex justify-end gap-2 mb-2">
+                    <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded font-bold text-xs">印刷</button>
+                    <button onclick="downloadPDF()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded font-bold text-xs">PDF出力</button>
+                    <button onclick="document.getElementById('range-result-area').innerHTML=''" class="bg-slate-300 hover:bg-slate-400 text-slate-800 px-2 py-1 rounded font-bold text-xs">閉じる</button>
+                </div>
+                <div id="pdf-container-area">
             `;
 
-            events.forEach(ev => {
+            pages.forEach((pageEvents, pageIndex) => {
                 html += `
-                    <tr class='border-b hover:bg-slate-50'>
-                        <td class='p-2 border-r font-mono whitespace-nowrap'>${ev.date}</td>
-                        <td class='p-2 border-r text-center whitespace-nowrap'>${ev.dayOfWeek}</td>
-                        <td class='p-2 border-r whitespace-nowrap'>${ev.time}</td>
-                        <td class='p-2 border-r font-semibold'>${ev.sub}</td>
-                        <td class='p-2 whitespace-nowrap'>${ev.type}</td>
-                    </tr>
+                    <div class='pdf-target-page bg-white border rounded shadow-sm overflow-hidden text-xs p-6' style="box-sizing: border-box; width: 210mm; height: 297mm; margin: 0 auto; background: white; display: flex; flex-direction: column; justify-content: space-between; page-break-after: always;">
+                        <div>
+                            <div class='pb-3 mb-4 border-b-2 border-slate-800 font-bold text-slate-800 flex justify-between items-center text-sm'>
+                                <span>${s.name}さんのスケジュール一覧 (${startDateStr} ～ ${endDateStr})</span>
+                                <span class='text-slate-500 font-normal text-xs'>全 ${events.length} 件中 (${pageIndex + 1}ページ目 / 全 ${pages.length}ページ)</span>
+                            </div>
+                            <div class='overflow-x-auto'>
+                                <table class='w-full text-left border-collapse border border-slate-300'>
+                                    <thead>
+                                        <tr class='bg-slate-100 text-slate-700 border-b border-slate-300'>
+                                            <th class='p-3 border border-slate-300 text-center font-bold'>日付</th>
+                                            <th class='p-3 border border-slate-300 text-center font-bold'>曜日</th>
+                                            <th class='p-3 border border-slate-300 text-center font-bold'>時間</th>
+                                            <th class='p-3 border border-slate-300 font-bold'>教科</th>
+                                            <th class='p-3 border border-slate-300 text-center font-bold'>区分</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                `;
+
+                pageEvents.forEach(ev => {
+                    html += `
+                        <tr class='border-b border-slate-300 hover:bg-slate-50'>
+                            <td class='p-3 border border-slate-300 font-mono text-center whitespace-nowrap'>${ev.date}</td>
+                            <td class='p-3 border border-slate-300 text-center whitespace-nowrap'>${ev.dayOfWeek}</td>
+                            <td class='p-3 border border-slate-300 text-center whitespace-nowrap'>${ev.time}</td>
+                            <td class='p-3 border border-slate-300 font-semibold'>${ev.sub}</td>
+                            <td class='p-3 border border-slate-300 text-center whitespace-nowrap'>${ev.type}</td>
+                        </tr>
+                    `;
+                });
+
+                html += `
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="text-center text-slate-400 text-[10px] pt-4 mt-auto">塾管理システム - ${pageIndex + 1} / ${pages.length}</div>
+                    </div>
                 `;
             });
 
-            html += `
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            `;
+            html += `</div>`;
             resultArea.innerHTML = html;
+        };
+
+        window.downloadPDF = async () => {
+            const targets = document.querySelectorAll('.pdf-target-page');
+            if (targets.length === 0) return;
+            const noPrintElements = document.querySelectorAll('.no-print');
+            noPrintElements.forEach(el => el.style.display = 'none');
+            try {
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
+
+                for (let i = 0; i < targets.length; i++) {
+                    const canvas = await html2canvas(targets[i], { scale: 2, useCORS: true, windowWidth: 800 });
+                    const imgData = canvas.toDataURL('image/png');
+                    
+                    if (i > 0) pdf.addPage();
+                    
+                    pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight);
+                }
+                pdf.save('schedule.pdf');
+            } catch (err) {
+                console.error(err);
+                alert("PDFの出力に失敗しました。");
+            } finally {
+                noPrintElements.forEach(el => el.style.display = '');
+            }
         };
 
         const render = () => { 
@@ -431,7 +488,14 @@
                 container.innerHTML += `<div class="mt-3 flex gap-2 justify-end"><button onclick="addSummerRow('${s.id}')" class="text-xs bg-slate-500 text-white px-3 py-1.5 rounded">＋行</button><button onclick="saveSummer('${s.id}')" class="bg-blue-600 text-white px-4 py-1.5 rounded text-xs font-bold">保存</button></div>`;
                 summerContainer.appendChild(summerGroupDiv);
 
-                const allAbsences = Object.keys(s.attendance || {}).filter(k => s.attendance[k] === '欠席' && !k.startsWith('makeup_') && !k.startsWith('sm_'));
+                const allAbsences = Object.keys(s.attendance || {}).filter(k => s.attendance[k] === '欠席' && !k.startsWith('makeup_') && !k.startsWith('sm_')).sort((a, b) => {
+                    const dateA = a.split('_')[0] || '';
+                    const dateB = b.split('_')[0] || '';
+                    if (dateA !== dateB) return dateA.localeCompare(dateB);
+                    const timeA = a.substring(dateA.length + 1);
+                    const timeB = b.substring(dateB.length + 1);
+                    return getTimeKey(timeA) - getTimeKey(timeB);
+                });
                 const activeReservations = (s.makeupReservations || []).filter(r => !r.completed);
                 const remaining = allAbsences.length - activeReservations.length;
                 let schedHtml = (s.schedules || []).map(sc => `<span class="text-[10px] px-2 py-0.5 rounded whitespace-nowrap inline-block" style="background:${getColor(sc.time)}">${sc.time.substring(1)}:${sc.sub}</span>`).join('');
@@ -442,7 +506,7 @@
                     if (!timeGroups[tKey]) timeGroups[tKey] = { title: tKey + "の予定", events: [], timeVal: getTimeKey(tKey) };
                     timeGroups[tKey].events.push({name: s.name, id: s.id, time: sc.time, sub: sc.sub, attKey: `${todayStr}_${sc.time}`, status: (s.attendance || {})[`${todayStr}_${sc.time}`]}); 
                 });
-                (s.makeupReservations || []).filter(r => !r.completed && r.date === todayStr).forEach(r => {
+                (s.makeupReservations || []).filter(r => r.date === todayStr).forEach(r => {
                     let tKey = r.time;
                     if (!timeGroups[tKey]) timeGroups[tKey] = { title: tKey + "の予定", events: [], timeVal: getTimeKey(tKey) };
                     timeGroups[tKey].events.push({name: s.name, id: s.id, time: r.time, sub: r.subject + " (振替)", attKey: `makeup_${s.id}_${r.date}_${r.time}`, absKey: r.absKey, makeup: true, status: (s.attendance || {})[`makeup_${s.id}_${r.date}_${r.time}`]});
@@ -473,6 +537,32 @@
                 }
             });
 
+            // **修正部分：振替タブの日にちの表示を日付順に表示する**
+            // 振替タブ内の各生徒のグループ（makeupList 内の各 groupDiv）について、中の「欠席日（absKey）」を日付・時間順に並び替える
+            setTimeout(() => {
+                const makeupGroups = makeupList.querySelectorAll('.makeup-group');
+                makeupGroups.forEach(group => {
+                    const studentId = group.querySelector('.makeup-name-header').getAttribute('onclick')?.match(/'([^']+)'/)?.[1];
+                    if (!studentId) return;
+                    const bodyContainer = group.querySelector(`[id^="makeup-body-"]`);
+                    if (!bodyContainer) return;
+                    const rows = Array.from(bodyContainer.querySelectorAll('.makeup-row'));
+                    rows.sort((a, b) => {
+                        const textA = a.querySelector('.makeup-orig').textContent.trim();
+                        const textB = b.querySelector('.makeup-orig').textContent.trim();
+                        const partsA = textA.split(' ');
+                        const partsB = textB.split(' ');
+                        const dateA = partsA[0] || '';
+                        const dateB = partsB[0] || '';
+                        if (dateA !== dateB) return dateA.localeCompare(dateB);
+                        const timeA = partsA[1] || '';
+                        const timeB = partsB[1] || '';
+                        return getTimeKey(timeA) - getTimeKey(timeB);
+                    });
+                    rows.forEach(row => bodyContainer.appendChild(row));
+                });
+            }, 0);
+
             Object.keys(timeGroups).sort((a,b) => timeGroups[a].timeVal - timeGroups[b].timeVal).forEach(k => {
                 todayList.innerHTML += `<div class="font-bold text-slate-700 mt-6 mb-2 border-b border-slate-300" style="max-width: 600px; margin: 12px auto 4px auto;">${timeGroups[k].title}</div>`;
                 timeGroups[k].events.forEach(ev => {
@@ -487,9 +577,19 @@
             let data = snap.data(); 
             let attendance = data.attendance || {}; 
             let reservations = data.makeupReservations || [];
-            if (status === '取消') delete attendance[attKey];
-            else if (status === '出席' && absKey) { attendance[attKey] = '出席'; if(!isTrial) { delete attendance[absKey]; reservations = reservations.map(r => r.absKey === absKey ? { ...r, completed: true } : r); } }
-            else attendance[attKey] = status;
+            
+            if (status === '取消') {
+                delete attendance[attKey];
+            } else if (status === '出席') { 
+                attendance[attKey] = '出席'; 
+                // 修正部分：予定タブで振替先の授業（attKeyがmakeup_で始まるもの）を出席にした場合、対応する振替元（absKey）も連動して出席にする
+                if (attKey.startsWith('makeup_') && absKey) {
+                    attendance[absKey] = '出席';
+                }
+            } else {
+                attendance[attKey] = status;
+            }
+            
             await updateDoc(ref, { attendance, ...(isTrial ? {} : { makeupReservations: reservations }) });
             render();
         };

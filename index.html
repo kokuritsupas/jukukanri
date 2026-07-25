@@ -520,7 +520,26 @@
                     let bodyContainer = groupDiv.querySelector(`#makeup-body-${s.id}`);
                     allAbsences.forEach(k => { 
                         const res = activeReservations.find(r => r.absKey === k);
-                        bodyContainer.innerHTML += `<div class="makeup-row"><div class="makeup-orig">${k.replace('_',' ')}</div>` + (res ? `<div class="makeup-inputs justify-center text-blue-600">${res.date} ${res.time}</div><button onclick="cancelMakeup('${s.id}','${k}')" class="cancel-btn">取消</button>` : `<div class="makeup-inputs"><input type="date" id="d-${k}"><select id="t-${k}">${timeOptions}</select></div><button onclick="bookMakeup('${s.id}','${k}','授業')" class="makeup-btn">予約</button>`) + `</div>`; 
+                        
+                        // 振替元の教科名を取得する処理
+                        let origSubject = "";
+                        const absParts = k.split('_');
+                        if (absParts.length >= 2) {
+                            const absDateStr = absParts[0]; // yyyy-mm-dd
+                            const absTime = absParts.slice(1).join('_');
+                            const absDateObj = new Date(absDateStr);
+                            if (!isNaN(absDateObj.getTime())) {
+                                const dayOfWeekNames = ["日", "月", "火", "水", "木", "金", "土"];
+                                const absDayOfWeek = dayOfWeekNames[absDateObj.getDay()];
+                                const matchedSched = (s.schedules || []).find(sc => sc.day === absDayOfWeek && sc.time === absTime);
+                                if (matchedSched) {
+                                    origSubject = matchedSched.sub;
+                                }
+                            }
+                        }
+                        if (!origSubject) origSubject = "授業";
+
+                        bodyContainer.innerHTML += `<div class="makeup-row"><div class="makeup-orig">${k.replace('_',' ')}</div>` + (res ? `<div class="makeup-inputs justify-center text-blue-600">${res.date} ${res.time}</div><button onclick="cancelMakeup('${s.id}','${k}')" class="cancel-btn">取消</button>` : `<div class="makeup-inputs"><input type="date" id="d-${k}"><select id="t-${k}">${timeOptions}</select></div><button onclick="bookMakeup('${s.id}','${k}','${origSubject}')" class="makeup-btn">予約</button>`) + `</div>`; 
                     });
                     makeupList.appendChild(groupDiv);
                 }
@@ -537,8 +556,6 @@
                 }
             });
 
-            // **修正部分：振替タブの日にちの表示を日付順に表示する**
-            // 振替タブ内の各生徒のグループ（makeupList 内の各 groupDiv）について、中の「欠席日（absKey）」を日付・時間順に並び替える
             setTimeout(() => {
                 const makeupGroups = makeupList.querySelectorAll('.makeup-group');
                 makeupGroups.forEach(group => {
@@ -566,7 +583,23 @@
             Object.keys(timeGroups).sort((a,b) => timeGroups[a].timeVal - timeGroups[b].timeVal).forEach(k => {
                 todayList.innerHTML += `<div class="font-bold text-slate-700 mt-6 mb-2 border-b border-slate-300" style="max-width: 600px; margin: 12px auto 4px auto;">${timeGroups[k].title}</div>`;
                 timeGroups[k].events.forEach(ev => {
-                    todayList.innerHTML += `<div class="grid-row" style="background:${ev.isSummer ? '#fff59d' : getColor(ev.time)}"><strong>${ev.name}${ev.makeup ? '<br><span class="text-xs text-blue-600">(振替)</span>' : ''}</strong><span style="word-break:break-word;">${ev.sub}</span><div class="flex gap-1"><button onclick="setAtt('${ev.id}','${ev.attKey}','出席','${ev.absKey || ''}', ${!!ev.isTrial || false})" class="att-btn ${ev.status === '出席' ? 'bg-blue-500 text-white' : ''}">出</button><button onclick="setAtt('${ev.id}','${ev.attKey}','欠席','${ev.absKey || ''}', ${!!ev.isTrial || false})" class="att-btn ${ev.status === '欠席' ? 'bg-red-500 text-white' : ''}">欠</button><button onclick="setAtt('${ev.id}','${ev.attKey}','無','${ev.absKey || ''}', ${!!ev.isTrial || false})" class="att-btn ${ev.status === '無' ? 'bg-slate-500 text-white' : ''}">無</button><button onclick="setAtt('${ev.id}','${ev.attKey}','取消','${ev.absKey || ''}', ${!!ev.isTrial || false})" class="att-btn">取</button></div></div>`;
+                    // 修正部分：予定タブの氏名表示をバランスよく修正（名字と名前を横一列に、下段に教科・講習名を表示）
+                    todayList.innerHTML += `
+                        <div class="grid-row" style="background:${ev.isSummer ? '#fff59d' : getColor(ev.time)}">
+                            <div style="font-weight: bold; font-size: 15px; display: flex; align-items: baseline; gap: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                <span>${ev.name}</span>
+                                ${ev.makeup ? '<span class="text-[10px] text-blue-600 font-normal">(振替)</span>' : ''}
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 2px; word-break: break-word;">
+                                <span style="font-size: 13px; font-weight: 600;">${ev.sub}</span>
+                            </div>
+                            <div class="flex gap-1">
+                                <button onclick="setAtt('${ev.id}','${ev.attKey}','出席','${ev.absKey || ''}', ${!!ev.isTrial || false})" class="att-btn ${ev.status === '出席' ? 'bg-blue-500 text-white' : ''}">出</button>
+                                <button onclick="setAtt('${ev.id}','${ev.attKey}','欠席','${ev.absKey || ''}', ${!!ev.isTrial || false})" class="att-btn ${ev.status === '欠席' ? 'bg-red-500 text-white' : ''}">欠</button>
+                                <button onclick="setAtt('${ev.id}','${ev.attKey}','無','${ev.absKey || ''}', ${!!ev.isTrial || false})" class="att-btn ${ev.status === '無' ? 'bg-slate-500 text-white' : ''}">無</button>
+                                <button onclick="setAtt('${ev.id}','${ev.attKey}','取消','${ev.absKey || ''}', ${!!ev.isTrial || false})" class="att-btn">取</button>
+                            </div>
+                        </div>`;
                 });
             });
         }; 
@@ -582,7 +615,6 @@
                 delete attendance[attKey];
             } else if (status === '出席') { 
                 attendance[attKey] = '出席'; 
-                // 修正部分：予定タブで振替先の授業（attKeyがmakeup_で始まるもの）を出席にした場合、対応する振替元（absKey）も連動して出席にする
                 if (attKey.startsWith('makeup_') && absKey) {
                     attendance[absKey] = '出席';
                 }

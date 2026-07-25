@@ -44,7 +44,7 @@
         .makeup-container { padding: 10px; }
         .makeup-group { margin-bottom: 16px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
         .makeup-name-header { background: #f1f5f9; padding: 8px; font-weight: bold; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; cursor: pointer; }
-        .makeup-row { display: grid; grid-template-columns: 1.2fr 1.5fr auto; align-items: center; gap: 6px; padding: 8px; border-bottom: 1px solid #f1f5f9; background: white; font-size: 12px; }
+        .makeup-row { display: grid; grid-template-columns: 1.4fr 1.5fr auto; align-items: center; gap: 6px; padding: 8px; border-bottom: 1px solid #f1f5f9; background: white; font-size: 12px; }
         .makeup-orig { color: #475569; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .makeup-inputs { display: flex; gap: 2px; }
         .makeup-inputs input, .makeup-inputs select { width: 100%; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; }
@@ -65,6 +65,10 @@
             .max-w-xl { max-width: 1100px !important; display: grid !important; grid-template-columns: 200px 1fr; gap: 20px; align-items: start; }
             nav { flex-direction: column !important; border-bottom: none !important; background: #f1f5f9 !important; border-radius: 8px; }
             .nav-btn { text-align: center; border-bottom: none !important; border-left: 4px solid transparent !important; }
+            
+            .name-display-area { display: inline !important; }
+            .name-display-area > div { display: inline !important; }
+            .name-display-area > div:nth-child(2)::before { content: " "; }
         }
     </style>
 </head>
@@ -326,7 +330,15 @@
                         if (status !== '無' && status !== '欠席') {
                             const formattedDate = r.date.replace(/-/g, '/');
                             const rDayOfWeek = dayOfWeekNames[rDate.getDay()];
-                            events.push({ date: formattedDate, dayOfWeek: rDayOfWeek, time: r.time, sub: (r.subject || "授業") + " (振替)", type: '振替' });
+                            
+                            let origSub = r.subject || "算数";
+                            if (!r.subject && r.absKey) {
+                                const absTime = r.absKey.split('_')[1];
+                                const origSc = (s.schedules || []).find(sc => sc.time === absTime);
+                                if (origSc) origSub = origSc.sub;
+                            }
+
+                            events.push({ date: formattedDate, dayOfWeek: rDayOfWeek, time: r.time, sub: origSub + " (振替)", type: '振替' });
                         }
                     }
                 }
@@ -509,7 +521,24 @@
                 (s.makeupReservations || []).filter(r => r.date === todayStr).forEach(r => {
                     let tKey = r.time;
                     if (!timeGroups[tKey]) timeGroups[tKey] = { title: tKey + "の予定", events: [], timeVal: getTimeKey(tKey) };
-                    timeGroups[tKey].events.push({name: s.name, id: s.id, time: r.time, sub: r.subject + " (振替)", attKey: `makeup_${s.id}_${r.date}_${r.time}`, absKey: r.absKey, makeup: true, status: (s.attendance || {})[`makeup_${s.id}_${r.date}_${r.time}`]});
+                    
+                    let origSub = r.subject || "算数";
+                    if (!r.subject && r.absKey) {
+                        const absTime = r.absKey.split('_')[1];
+                        const origSc = (s.schedules || []).find(sc => sc.time === absTime);
+                        if (origSc) origSub = origSc.sub;
+                    }
+
+                    timeGroups[tKey].events.push({
+                        name: s.name, 
+                        id: s.id, 
+                        time: r.time, 
+                        sub: origSub + " (振替)", 
+                        attKey: `makeup_${s.id}_${r.date}_${r.time}`, 
+                        absKey: r.absKey, 
+                        makeup: true, 
+                        status: (s.attendance || {})[`makeup_${s.id}_${r.date}_${r.time}`]
+                    });
                 });
                 
                 if (allAbsences.length > 0) {
@@ -521,25 +550,27 @@
                     allAbsences.forEach(k => { 
                         const res = activeReservations.find(r => r.absKey === k);
                         
-                        // 振替元の教科名を取得する処理
-                        let origSubject = "";
-                        const absParts = k.split('_');
-                        if (absParts.length >= 2) {
-                            const absDateStr = absParts[0]; // yyyy-mm-dd
-                            const absTime = absParts.slice(1).join('_');
-                            const absDateObj = new Date(absDateStr);
-                            if (!isNaN(absDateObj.getTime())) {
-                                const dayOfWeekNames = ["日", "月", "火", "水", "木", "金", "土"];
-                                const absDayOfWeek = dayOfWeekNames[absDateObj.getDay()];
-                                const matchedSched = (s.schedules || []).find(sc => sc.day === absDayOfWeek && sc.time === absTime);
-                                if (matchedSched) {
-                                    origSubject = matchedSched.sub;
-                                }
-                            }
-                        }
-                        if (!origSubject) origSubject = "授業";
+                        let defaultSub = "算数";
+                        const parts = k.split('_');
+                        const absDate = parts[0] || '';
+                        const absTime = parts[1] || '';
+                        const absDayOfWeek = ["日", "月", "火", "水", "木", "金", "土"][new Date(absDate.replace(/-/g, '/')).getDay()];
+                        const origSc = (s.schedules || []).find(sc => sc.time === absTime && sc.day === absDayOfWeek) || (s.schedules || []).find(sc => sc.time === absTime);
+                        if(origSc) defaultSub = origSc.sub;
 
-                        bodyContainer.innerHTML += `<div class="makeup-row"><div class="makeup-orig">${k.replace('_',' ')}</div>` + (res ? `<div class="makeup-inputs justify-center text-blue-600">${res.date} ${res.time}</div><button onclick="cancelMakeup('${s.id}','${k}')" class="cancel-btn">取消</button>` : `<div class="makeup-inputs"><input type="date" id="d-${k}"><select id="t-${k}">${timeOptions}</select></div><button onclick="bookMakeup('${s.id}','${k}','${origSubject}')" class="makeup-btn">予約</button>`) + `</div>`; 
+                        const displayOrigText = `${absDate.replace(/-/g, '/')} (${absDayOfWeek}) ${absTime} [${defaultSub}]`;
+
+                        let resDisplay = "";
+                        if (res) {
+                            const resDate = res.date.replace(/-/g, '/');
+                            const resDayOfWeek = ["日", "月", "火", "水", "木", "金", "土"][new Date(res.date.replace(/-/g, '/')).getDay()];
+                            const resSub = res.subject || defaultSub;
+                            resDisplay = `${resDate} (${resDayOfWeek}) ${res.time} [${resSub}]`;
+                        }
+
+                        bodyContainer.innerHTML += `<div class="makeup-row"><div class="makeup-orig">${displayOrigText}</div>` + 
+                        (res ? `<div class="makeup-inputs justify-center text-blue-600">${resDisplay}</div><button onclick="cancelMakeup('${s.id}','${k}')" class="cancel-btn">取消</button>` : 
+                        `<div class="makeup-inputs"><input type="date" id="d-${k}"><select id="t-${k}">${timeOptions}</select><select id="sub-${k}">${subjects.map(sub => `<option ${sub === defaultSub ? 'selected' : ''}>${sub}</option>`).join('')}</select></div><button onclick="bookMakeupCustom('${s.id}','${k}')" class="makeup-btn">予約</button>`) + `</div>`; 
                     });
                     makeupList.appendChild(groupDiv);
                 }
@@ -559,8 +590,6 @@
             setTimeout(() => {
                 const makeupGroups = makeupList.querySelectorAll('.makeup-group');
                 makeupGroups.forEach(group => {
-                    const studentId = group.querySelector('.makeup-name-header').getAttribute('onclick')?.match(/'([^']+)'/)?.[1];
-                    if (!studentId) return;
                     const bodyContainer = group.querySelector(`[id^="makeup-body-"]`);
                     if (!bodyContainer) return;
                     const rows = Array.from(bodyContainer.querySelectorAll('.makeup-row'));
@@ -572,8 +601,8 @@
                         const dateA = partsA[0] || '';
                         const dateB = partsB[0] || '';
                         if (dateA !== dateB) return dateA.localeCompare(dateB);
-                        const timeA = partsA[1] || '';
-                        const timeB = partsB[1] || '';
+                        const timeA = partsA[2] || '';
+                        const timeB = partsB[2] || '';
                         return getTimeKey(timeA) - getTimeKey(timeB);
                     });
                     rows.forEach(row => bodyContainer.appendChild(row));
@@ -583,17 +612,26 @@
             Object.keys(timeGroups).sort((a,b) => timeGroups[a].timeVal - timeGroups[b].timeVal).forEach(k => {
                 todayList.innerHTML += `<div class="font-bold text-slate-700 mt-6 mb-2 border-b border-slate-300" style="max-width: 600px; margin: 12px auto 4px auto;">${timeGroups[k].title}</div>`;
                 timeGroups[k].events.forEach(ev => {
-                    // 修正部分：予定タブの氏名表示をバランスよく修正（名字と名前を横一列に、下段に教科・講習名を表示）
+                    let rawName = ev.name.replace(/\s*\(体験\)$/, '');
+                    let suffix = ev.name.includes('(体験)') ? ' (体験)' : '';
+                    let nameParts = rawName.trim().split(/[\s ]+/);
+                    let nameHtml = '';
+                    if (nameParts.length >= 2) {
+                        nameHtml = `<div class="name-display-area"><div>${nameParts[0]}</div><div>${nameParts.slice(1).join(' ')}</div></div>${suffix}`;
+                    } else {
+                        nameHtml = `${rawName}${suffix}`;
+                    }
+
                     todayList.innerHTML += `
                         <div class="grid-row" style="background:${ev.isSummer ? '#fff59d' : getColor(ev.time)}">
-                            <div style="font-weight: bold; font-size: 15px; display: flex; align-items: baseline; gap: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                <span>${ev.name}</span>
-                                ${ev.makeup ? '<span class="text-[10px] text-blue-600 font-normal">(振替)</span>' : ''}
+                            <div class="min-w-0 flex flex-col justify-center">
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <strong class="text-sm truncate shrink-0 max-w-[180px]">${nameHtml}</strong>
+                                    ${ev.makeup ? '<span class="text-xs text-blue-600 font-bold shrink-0">(振替)</span>' : ''}
+                                </div>
                             </div>
-                            <div style="display: flex; flex-direction: column; gap: 2px; word-break: break-word;">
-                                <span style="font-size: 13px; font-weight: 600;">${ev.sub}</span>
-                            </div>
-                            <div class="flex gap-1">
+                            <span class="text-xs md:text-sm font-medium leading-tight" style="word-break:break-word;">${ev.sub}</span>
+                            <div class="flex gap-1 shrink-0">
                                 <button onclick="setAtt('${ev.id}','${ev.attKey}','出席','${ev.absKey || ''}', ${!!ev.isTrial || false})" class="att-btn ${ev.status === '出席' ? 'bg-blue-500 text-white' : ''}">出</button>
                                 <button onclick="setAtt('${ev.id}','${ev.attKey}','欠席','${ev.absKey || ''}', ${!!ev.isTrial || false})" class="att-btn ${ev.status === '欠席' ? 'bg-red-500 text-white' : ''}">欠</button>
                                 <button onclick="setAtt('${ev.id}','${ev.attKey}','無','${ev.absKey || ''}', ${!!ev.isTrial || false})" class="att-btn ${ev.status === '無' ? 'bg-slate-500 text-white' : ''}">無</button>
@@ -627,7 +665,25 @@
         };
 
         window.cancelMakeup = async (id, absKey) => { if(!confirm("予約を取り消しますか？")) return; const ref = doc(db, "students", id); const snap = await getDoc(ref); let data = snap.data(); let res = (data.makeupReservations || []).filter(r => r.absKey !== absKey); await updateDoc(ref, { makeupReservations: res }); render(); }; 
-        window.bookMakeup = async (id, absKey, subject) => { const date = document.getElementById(`d-${absKey}`).value; const time = document.getElementById(`t-${absKey}`).value; if(!date) return alert("日付を選択してください"); const ref = doc(db, "students", id); const snap = await getDoc(ref); let data = snap.data(); let res = (data.makeupReservations || []).filter(r => r.absKey !== absKey); res.push({ absKey, date, time, completed: false, subject: subject }); await updateDoc(ref, { makeupReservations: res }); alert("予約完了しました"); render(); }; 
+        
+        window.bookMakeupCustom = async (id, absKey) => { 
+            const date = document.getElementById(`d-${absKey}`).value; 
+            const time = document.getElementById(`t-${absKey}`).value; 
+            const subject = document.getElementById(`sub-${absKey}`).value; 
+            if(!date) return alert("日付を選択してください"); 
+            const ref = doc(db, "students", id); 
+            const snap = await getDoc(ref); 
+            let data = snap.data(); 
+            let res = (data.makeupReservations || []).filter(r => r.absKey !== absKey); 
+            res.push({ absKey, date, time, completed: false, subject: subject }); 
+            await updateDoc(ref, { makeupReservations: res }); 
+            alert("予約完了しました"); 
+            render(); 
+        };
+
+        window.bookMakeup = async (id, absKey, subject) => {
+            window.bookMakeupCustom(id, absKey);
+        };
         
         document.getElementById('search-box').onchange = (e) => { 
             const s = cachedData.find(i => i.id === e.target.value); 

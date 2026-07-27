@@ -180,7 +180,9 @@
     <div id="password-change-modal" class="fixed inset-0 bg-slate-900/80 z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm space-y-4">
             <h2 class="text-lg font-bold text-slate-800 border-l-4 border-blue-600 pl-3">パスワード変更</h2>
+            <input type="password" id="old-password" placeholder="旧パスワード" class="input-styled">
             <input type="password" id="new-password" placeholder="新しいパスワード" class="input-styled">
+            <div id="password-change-error" class="text-xs text-red-500 font-bold text-center hidden">旧パスワードが間違っています</div>
             <div class="flex gap-2">
                 <button onclick="saveNewPassword()" class="btn-main !p-2">変更を保存</button>
                 <button onclick="closePasswordChangeModal()" class="w-full bg-slate-300 text-slate-700 py-2 rounded font-bold">キャンセル</button>
@@ -253,6 +255,9 @@
         };
 
         window.openPasswordChangeModal = () => {
+            document.getElementById('old-password').value = "";
+            document.getElementById('new-password').value = "";
+            document.getElementById('password-change-error').classList.add('hidden');
             document.getElementById('password-change-modal').classList.remove('hidden');
         };
 
@@ -261,11 +266,24 @@
         };
 
         window.saveNewPassword = async () => {
+            const oldPass = document.getElementById('old-password').value.trim();
             const newPass = document.getElementById('new-password').value.trim();
-            if(!newPass) return alert("パスワードを入力してください");
+            const correctPass = courseDates.password || 'koji1516';
+            
+            if(!oldPass || !newPass) {
+                alert("旧パスワードと新しいパスワードを入力してください");
+                return;
+            }
+            if(oldPass !== correctPass) {
+                document.getElementById('password-change-error').classList.remove('hidden');
+                return;
+            }
+            
+            document.getElementById('password-change-error').classList.add('hidden');
             await setDoc(doc(db, "system", "config"), { password: newPass }, {merge:true});
             alert("パスワードを変更しました");
             closePasswordChangeModal();
+            document.getElementById('old-password').value = "";
             document.getElementById('new-password').value = "";
         };
 

@@ -74,10 +74,24 @@
 </head>
 <body class="bg-slate-50 text-slate-800">
 
+    <!-- パスワード認証モーダル -->
+    <div id="auth-modal" class="fixed inset-0 bg-slate-900/80 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm space-y-4">
+            <h2 class="text-lg font-bold text-slate-800 border-l-4 border-blue-600 pl-3">パスワード認証</h2>
+            <p class="text-xs text-slate-600">システムを利用するにはパスワードを入力してください。<br>(初期パスワード: 1234)</p>
+            <input type="password" id="auth-password" placeholder="パスワードを入力" class="input-styled">
+            <button id="auth-btn" class="btn-main">ログイン</button>
+            <div id="auth-error" class="text-xs text-red-500 font-bold text-center hidden">パスワードが間違っています</div>
+        </div>
+    </div>
+
     <div class="max-w-xl mx-auto bg-white min-h-screen shadow-2xl p-4 h-adr">
         <span class="p-country-name" style="display:none;">Japan</span>
         <div>
-            <h1 class="text-xl font-bold mb-4 border-l-4 border-slate-800 pl-3">塾管理システム</h1>
+            <div class="flex justify-between items-center mb-4">
+                <h1 class="text-xl font-bold border-l-4 border-slate-800 pl-3 m-0">塾管理システム</h1>
+                <button onclick="openPasswordChangeModal()" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1.5 rounded font-bold">パスワード変更</button>
+            </div>
             <nav class="flex border-b mb-6 overflow-hidden bg-slate-100 rounded-t-lg">
                 <button id="nav1" class="nav-btn nav-active-tab">登録編集</button>
                 <button id="nav2" class="nav-btn">一覧</button>
@@ -162,11 +176,23 @@
         </div>
     </div>
 
+    <!-- パスワード変更モーダル -->
+    <div id="password-change-modal" class="fixed inset-0 bg-slate-900/80 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm space-y-4">
+            <h2 class="text-lg font-bold text-slate-800 border-l-4 border-blue-600 pl-3">パスワード変更</h2>
+            <input type="password" id="new-password" placeholder="新しいパスワード" class="input-styled">
+            <div class="flex gap-2">
+                <button onclick="saveNewPassword()" class="btn-main !p-2">変更を保存</button>
+                <button onclick="closePasswordChangeModal()" class="w-full bg-slate-300 text-slate-700 py-2 rounded font-bold">キャンセル</button>
+            </div>
+        </div>
+    </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
         import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, updateDoc, deleteDoc, addDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
         const db = getFirestore(initializeApp({ apiKey: "YOUR_API_KEY", projectId: "juku-kanri-system", storageBucket: "juku-kanri-system.firebasestorage.app", messagingSenderId: "525148833125", appId: "1:525148833125:web:36bee786e3545bd7908d8c" }));
-        let cachedData = []; let trialsData = []; let courseDates = { start: '', end: '' };
+        let cachedData = []; let trialsData = []; let courseDates = { start: '', end: '', password: '1234' };
         let openMakeupIds = {};
         let openSummerIds = {};
         
@@ -224,6 +250,33 @@
         window.saveCourseDates = async () => {
             await setDoc(doc(db, "system", "config"), { start: document.getElementById('course-start').value, end: document.getElementById('course-end').value }, {merge:true});
             alert("期間を保存しました");
+        };
+
+        window.openPasswordChangeModal = () => {
+            document.getElementById('password-change-modal').classList.remove('hidden');
+        };
+
+        window.closePasswordChangeModal = () => {
+            document.getElementById('password-change-modal').classList.add('hidden');
+        };
+
+        window.saveNewPassword = async () => {
+            const newPass = document.getElementById('new-password').value.trim();
+            if(!newPass) return alert("パスワードを入力してください");
+            await setDoc(doc(db, "system", "config"), { password: newPass }, {merge:true});
+            alert("パスワードを変更しました");
+            closePasswordChangeModal();
+            document.getElementById('new-password').value = "";
+        };
+
+        document.getElementById('auth-btn').onclick = () => {
+            const inputPass = document.getElementById('auth-password').value;
+            const correctPass = courseDates.password || 'koji1516';
+            if (inputPass === correctPass) {
+                document.getElementById('auth-modal').classList.add('hidden');
+            } else {
+                document.getElementById('auth-error').classList.remove('hidden');
+            }
         };
 
         window.toggleMakeupGroup = (id) => {
@@ -510,7 +563,6 @@
                 });
 
                 const summerAbsences = Object.keys(s.attendance || {}).filter(k => s.attendance[k] === '欠席' && k.startsWith('sm_')).sort((a, b) => {
-                    // key format: sm_YYYY-MM-DD_time
                     const partsA = a.split('_');
                     const partsB = b.split('_');
                     const dateA = partsA[1] || '';
@@ -542,6 +594,15 @@
                     if (!timeGroups[tKey]) timeGroups[tKey] = { title: tKey + "の予定", events: [], timeVal: getTimeKey(tKey) };
                     timeGroups[tKey].events.push({name: s.name, id: s.id, time: sc.time, sub: sc.sub, attKey: `${todayStr}_${sc.time}`, status: (s.attendance || {})[`${todayStr}_${sc.time}`]}); 
                 });
+
+                (s.summerSessions || []).filter(sess => sess.date < todayStr).forEach(sess => {
+                    const smKey = `sm_${sess.date}_${sess.time}`;
+                    if (!(smKey in (s.attendance || {}))) {
+                        if (!s.attendance) s.attendance = {};
+                        s.attendance[smKey] = '欠席';
+                    }
+                });
+
                 (s.makeupReservations || []).filter(r => r.date === todayStr).forEach(r => {
                     let tKey = r.time;
                     if (!timeGroups[tKey]) timeGroups[tKey] = { title: tKey + "の予定", events: [], timeVal: getTimeKey(tKey) };
@@ -672,6 +733,8 @@
                         subHtml = subHtml.replace(' (振替)', '<br><span class="text-[11px] font-normal text-slate-600">(振替)</span>');
                     } else if (subHtml.includes(' (講習)')) {
                         subHtml = subHtml.replace(' (講習)', '<br><span class="text-[11px] font-normal text-slate-600">(講習)</span>');
+                    } else {
+                        subHtml = subHtml.replace(/([^\s]+)\s*(\([^\)]+\))/, '$1<br><span class="text-[11px] font-normal text-slate-600">$2</span>');
                     }
 
                     todayList.innerHTML += `

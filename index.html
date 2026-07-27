@@ -78,7 +78,7 @@
     <div id="auth-modal" class="fixed inset-0 bg-slate-900/80 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm space-y-4">
             <h2 class="text-lg font-bold text-slate-800 border-l-4 border-blue-600 pl-3">パスワード認証</h2>
-            <p class="text-xs text-slate-600">システムを利用するにはパスワードを入力してください。<br>(初期パスワード: 1234)</p>
+            <p class="text-xs text-slate-600">システムを利用するにはパスワードを入力してください。</p>
             <input type="password" id="auth-password" placeholder="パスワードを入力" class="input-styled">
             <button id="auth-btn" class="btn-main">ログイン</button>
             <div id="auth-error" class="text-xs text-red-500 font-bold text-center hidden">パスワードが間違っています</div>
@@ -192,7 +192,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
         import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, updateDoc, deleteDoc, addDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
         const db = getFirestore(initializeApp({ apiKey: "YOUR_API_KEY", projectId: "juku-kanri-system", storageBucket: "juku-kanri-system.firebasestorage.app", messagingSenderId: "525148833125", appId: "1:525148833125:web:36bee786e3545bd7908d8c" }));
-        let cachedData = []; let trialsData = []; let courseDates = { start: '', end: '', password: '1234' };
+        let cachedData = []; let trialsData = []; let courseDates = { start: '', end: '', password: 'koji1516' };
         let openMakeupIds = {};
         let openSummerIds = {};
         

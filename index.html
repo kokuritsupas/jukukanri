@@ -500,7 +500,7 @@
                 container.innerHTML += `<div class="mt-3 flex gap-2 justify-end"><button onclick="addSummerRow('${s.id}')" class="text-xs bg-slate-500 text-white px-3 py-1.5 rounded">＋行</button><button onclick="saveSummer('${s.id}')" class="bg-blue-600 text-white px-4 py-1.5 rounded text-xs font-bold">保存</button></div>`;
                 summerContainer.appendChild(summerGroupDiv);
 
-                const allAbsences = Object.keys(s.attendance || {}).filter(k => s.attendance[k] === '欠席' && !k.startsWith('makeup_') && !k.startsWith('sm_')).sort((a, b) => {
+                const regularAbsences = Object.keys(s.attendance || {}).filter(k => s.attendance[k] === '欠席' && !k.startsWith('makeup_') && !k.startsWith('sm_')).sort((a, b) => {
                     const dateA = a.split('_')[0] || '';
                     const dateB = b.split('_')[0] || '';
                     if (dateA !== dateB) return dateA.localeCompare(dateB);
@@ -508,10 +508,34 @@
                     const timeB = b.substring(dateB.length + 1);
                     return getTimeKey(timeA) - getTimeKey(timeB);
                 });
+
+                const summerAbsences = Object.keys(s.attendance || {}).filter(k => s.attendance[k] === '欠席' && k.startsWith('sm_')).sort((a, b) => {
+                    // key format: sm_YYYY-MM-DD_time
+                    const partsA = a.split('_');
+                    const partsB = b.split('_');
+                    const dateA = partsA[1] || '';
+                    const dateB = partsB[1] || '';
+                    if (dateA !== dateB) return dateA.localeCompare(dateB);
+                    const timeA = partsA[2] || '';
+                    const timeB = partsB[2] || '';
+                    return getTimeKey(timeA) - getTimeKey(timeB);
+                });
+
+                const allAbsences = [...regularAbsences, ...summerAbsences];
                 const activeReservations = (s.makeupReservations || []).filter(r => !r.completed);
                 const remaining = allAbsences.length - activeReservations.length;
                 let schedHtml = (s.schedules || []).map(sc => `<span class="text-[10px] px-2 py-0.5 rounded whitespace-nowrap inline-block" style="background:${getColor(sc.time)}">${sc.time.substring(1)}:${sc.sub}</span>`).join('');
-                studentList.innerHTML += `<div class="student-row"><span class="font-bold text-slate-400 text-sm">${index + 1}.</span><div class="student-main-info"><span onclick="window.editMode('${s.id}')" class="cursor-pointer font-bold text-blue-600 underline">${s.name}</span><span class="text-xs text-slate-500">${s.grade || ''}</span></div><span class="rem-count ${remaining === 0 ? 'rem-zero' : 'rem-positive'}">振替:${remaining}</span><div class="student-schedules">${schedHtml}</div></div>`;
+                
+                let rawListName = s.name || '';
+                let namePartsList = rawListName.trim().split(/[\s ]+/);
+                let nameHtmlList = '';
+                if (namePartsList.length >= 2) {
+                    nameHtmlList = `<span class="name-display-area"><span>${namePartsList[0]}</span><span> </span><span>${namePartsList.slice(1).join(' ')}</span></span>`;
+                } else {
+                    nameHtmlList = `<span>${rawListName}</span>`;
+                }
+
+                studentList.innerHTML += `<div class="student-row"><span class="font-bold text-slate-400 text-sm">${index + 1}.</span><div class="student-main-info"><span onclick="window.editMode('${s.id}')" class="cursor-pointer font-bold text-blue-600 underline">${nameHtmlList}</span><span class="text-xs text-slate-500">${s.grade || ''}</span></div><span class="rem-count ${remaining === 0 ? 'rem-zero' : 'rem-positive'}">振替:${remaining}</span><div class="student-schedules">${schedHtml}</div></div>`;
                 
                 (s.schedules || []).filter(sc => sc.day === dayStr).forEach(sc => { 
                     let tKey = sc.time;
@@ -551,14 +575,35 @@
                         const res = activeReservations.find(r => r.absKey === k);
                         
                         let defaultSub = "算数";
-                        const parts = k.split('_');
-                        const absDate = parts[0] || '';
-                        const absTime = parts[1] || '';
-                        const absDayOfWeek = ["日", "月", "火", "水", "木", "金", "土"][new Date(absDate.replace(/-/g, '/')).getDay()];
-                        const origSc = (s.schedules || []).find(sc => sc.time === absTime && sc.day === absDayOfWeek) || (s.schedules || []).find(sc => sc.time === absTime);
-                        if(origSc) defaultSub = origSc.sub;
+                        if (k.startsWith('sm_')) {
+                            const parts = k.split('_');
+                            const smDate = parts[1] || '';
+                            const smTime = parts[2] || '';
+                            const foundSess = (s.summerSessions || []).find(sess => sess.date === smDate && sess.time === smTime);
+                            if (foundSess) defaultSub = foundSess.sub;
+                        } else {
+                            const parts = k.split('_');
+                            const absDate = parts[0] || '';
+                            const absTime = parts[1] || '';
+                            const absDayOfWeek = ["日", "月", "火", "水", "木", "金", "土"][new Date(absDate.replace(/-/g, '/')).getDay()];
+                            const origSc = (s.schedules || []).find(sc => sc.time === absTime && sc.day === absDayOfWeek) || (s.schedules || []).find(sc => sc.time === absTime);
+                            if(origSc) defaultSub = origSc.sub;
+                        }
 
-                        const displayOrigText = `${absDate.replace(/-/g, '/')} (${absDayOfWeek}) ${absTime} [${defaultSub}]`;
+                        let displayOrigText = "";
+                        if (k.startsWith('sm_')) {
+                            const parts = k.split('_');
+                            const smDate = parts[1] || '';
+                            const smTime = parts[2] || '';
+                            const smDayOfWeek = ["日", "月", "火", "水", "木", "金", "土"][new Date(smDate.replace(/-/g, '/')).getDay()];
+                            displayOrigText = `${smDate.replace(/-/g, '/')} (${smDayOfWeek}) ${smTime} [${defaultSub} (講習)]`;
+                        } else {
+                            const parts = k.split('_');
+                            const absDate = parts[0] || '';
+                            const absTime = parts[1] || '';
+                            const absDayOfWeek = ["日", "月", "火", "水", "木", "金", "土"][new Date(absDate.replace(/-/g, '/')).getDay()];
+                            displayOrigText = `${absDate.replace(/-/g, '/')} (${absDayOfWeek}) ${absTime} [${defaultSub}]`;
+                        }
 
                         let resDisplay = "";
                         if (res) {
@@ -622,15 +667,21 @@
                         nameHtml = `${rawName}${suffix}`;
                     }
 
+                    let subHtml = ev.sub;
+                    if (subHtml.includes(' (振替)')) {
+                        subHtml = subHtml.replace(' (振替)', '<br><span class="text-[11px] font-normal text-slate-600">(振替)</span>');
+                    } else if (subHtml.includes(' (講習)')) {
+                        subHtml = subHtml.replace(' (講習)', '<br><span class="text-[11px] font-normal text-slate-600">(講習)</span>');
+                    }
+
                     todayList.innerHTML += `
                         <div class="grid-row" style="background:${ev.isSummer ? '#fff59d' : getColor(ev.time)}">
                             <div class="min-w-0 flex flex-col justify-center">
                                 <div class="flex items-center gap-1.5 flex-wrap">
                                     <strong class="text-sm truncate shrink-0 max-w-[180px]">${nameHtml}</strong>
-                                    ${ev.makeup ? '<span class="text-xs text-blue-600 font-bold shrink-0">(振替)</span>' : ''}
                                 </div>
                             </div>
-                            <span class="text-xs md:text-sm font-medium leading-tight" style="word-break:break-word;">${ev.sub}</span>
+                            <span class="text-xs md:text-sm font-medium leading-tight" style="word-break:break-word;">${subHtml}</span>
                             <div class="flex gap-1 shrink-0">
                                 <button onclick="setAtt('${ev.id}','${ev.attKey}','出席','${ev.absKey || ''}', ${!!ev.isTrial || false})" class="att-btn ${ev.status === '出席' ? 'bg-blue-500 text-white' : ''}">出</button>
                                 <button onclick="setAtt('${ev.id}','${ev.attKey}','欠席','${ev.absKey || ''}', ${!!ev.isTrial || false})" class="att-btn ${ev.status === '欠席' ? 'bg-red-500 text-white' : ''}">欠</button>

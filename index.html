@@ -53,6 +53,11 @@
 
         .sm-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; margin-bottom: 4px; align-items: center; }
         .sm-input { height: 36px !important; font-size: 12px !important; padding: 2px !important; }
+
+        /* 一番上に戻るボタン用の共通スタイル（画面下部固定・矢印表示） */
+        .scrollTop-btn { position: fixed; bottom: 20px; right: 20px; z-index: 40; }
+        .scrollTop-btn button { background-color: #3b82f6; color: white; width: 42px; height: 42px; border-radius: 50%; font-size: 18px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); transition: background 0.2s; border: none; cursor: pointer; }
+        .scrollTop-btn button:hover { background-color: #2563eb; }
         
         @media print {
             body * { visibility: hidden; }
@@ -105,6 +110,7 @@
 
         <div>
             <div id="tab1" class="tab-content active space-y-4">
+                <div class="scrollTop-btn"><button onclick="window.scrollTo({top:0, behavior:'smooth'})">▲</button></div>
                 <input type="text" id="stu-id" placeholder="生徒ID（必須）" class="input-styled md:w-1/2 w-full">
                 <div class="flex gap-2">
                     <input type="text" id="stu-name" placeholder="氏名" class="input-styled">
@@ -133,6 +139,7 @@
             </div>
 
             <div id="tab2" class="tab-content space-y-4">
+                <div class="scrollTop-btn"><button onclick="window.scrollTo({top:0, behavior:'smooth'})">▲</button></div>
                 <div class="p-3 bg-slate-100 rounded-lg border space-y-2">
                     <div class="text-xs font-bold text-slate-700">一斉メール送信</div>
                     <input type="text" id="bulk-mail-subject" placeholder="件名" class="input-styled !p-2 text-xs">
@@ -142,6 +149,7 @@
                 <div id="student-list"></div>
             </div>
             <div id="tab3" class="tab-content space-y-4">
+                <div class="scrollTop-btn"><button onclick="window.scrollTo({top:0, behavior:'smooth'})">▲</button></div>
                 <div style="max-width: 600px; margin: 0 auto;" class="space-y-2">
                     <input type="date" id="cal-today" class="input-styled font-bold" style="color: #000 !important;">
                     <div class="p-3 bg-slate-100 rounded-lg border space-y-2">
@@ -157,9 +165,16 @@
                 </div>
                 <div id="today-list" class="space-y-3 pt-2"></div>
             </div>
-            <div id="tab4" class="tab-content makeup-container"><div id="makeup-list" class="space-y-1"></div></div>
-            <div id="tab5" class="tab-content space-y-4"><select id="search-box" class="input-styled"><option value="">名前を選択してください...</option></select><div id="detail-view" class="p-4 border rounded bg-slate-50 text-sm">生徒を選択してください</div></div>
+            <div id="tab4" class="tab-content makeup-container">
+                <div class="scrollTop-btn"><button onclick="window.scrollTo({top:0, behavior:'smooth'})">▲</button></div>
+                <div id="makeup-list" class="space-y-1"></div>
+            </div>
+            <div id="tab5" class="tab-content space-y-4">
+                <div class="scrollTop-btn"><button onclick="window.scrollTo({top:0, behavior:'smooth'})">▲</button></div>
+                <select id="search-box" class="input-styled"><option value="">名前を選択してください...</option></select><div id="detail-view" class="p-4 border rounded bg-slate-50 text-sm">生徒を選択してください</div>
+            </div>
             <div id="tab6" class="tab-content space-y-4">
+                <div class="scrollTop-btn"><button onclick="window.scrollTo({top:0, behavior:'smooth'})">▲</button></div>
                 <h2 class="font-bold border-b pb-2">体験授業一覧</h2>
                 <div id="trial-list" class="space-y-2"></div>
                 <h2 class="font-bold border-b pb-2 mt-6">新規体験登録</h2>
@@ -180,7 +195,10 @@
                 <select id="trial-time" class="input-styled"><option>①17:00</option><option>②18:10</option><option>③19:20</option><option>④20:30</option><option>⑤13:40</option><option>⑥14:50</option><option>⑦16:00</option><option>⑧17:30</option><option>⑨18:40</option><option>⑩19:50</option></select>
                 <button id="save-trial" class="btn-main">体験予約を保存</button>
             </div>
-            <div id="tab7" class="tab-content makeup-container"><div id="summer-container" class="space-y-1"></div></div>
+            <div id="tab7" class="tab-content makeup-container">
+                <div class="scrollTop-btn"><button onclick="window.scrollTo({top:0, behavior:'smooth'})">▲</button></div>
+                <div id="summer-container" class="space-y-1"></div>
+            </div>
         </div>
     </div>
 
@@ -242,7 +260,6 @@
         window.deleteTrial = async (id) => {
             if(!confirm("体験予定を取消しますか？")) return;
             await deleteDoc(doc(db, "trials", id));
-            location.reload();
         };
 
         window.convertTrial = async (t) => {
@@ -871,18 +888,41 @@
             } else {
                 await setDoc(doc(db, "students", newId), data, {merge: true});
             }
-            if(window.pendingTrialConversion){ await deleteDoc(doc(db, "trials", window.pendingTrialConversion)); } 
+            if(window.pendingTrialConversion){ await deleteDoc(doc(db, "trials", window.pendingTrialConversion)); window.pendingTrialConversion = null; } 
             alert("保存しました");
-            location.reload(); 
         }; 
         
-        document.getElementById('save-trial').onclick = async () => { await addDoc(collection(db, "trials"), { name: document.getElementById('trial-name').value, grade: document.getElementById('trial-grade').value, sub: document.getElementById('trial-sub').value, date: document.getElementById('trial-date').value, time: document.getElementById('trial-time').value, registered: false }); location.reload(); };
+        document.getElementById('save-trial').onclick = async () => { await addDoc(collection(db, "trials"), { name: document.getElementById('trial-name').value, grade: document.getElementById('trial-grade').value, sub: document.getElementById('trial-sub').value, date: document.getElementById('trial-date').value, time: document.getElementById('trial-time').value, registered: false }); alert("体験予約を保存しました"); };
         document.querySelectorAll('nav button').forEach((btn, i) => { btn.onclick = () => { document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active')); document.querySelectorAll('.nav-btn').forEach(n => n.classList.remove('nav-active-tab')); document.querySelectorAll('.tab-content')[i].classList.add('active'); btn.classList.add('nav-active-tab'); }; }); 
         onSnapshot(doc(db, "system", "config"), (doc) => { if(doc.exists()){ courseDates = doc.data(); const cs = document.getElementById('course-start'); const ce = document.getElementById('course-end'); if(cs) cs.value = courseDates.start || ''; if(ce) ce.value = courseDates.end || ''; } });
         onSnapshot(collection(db, "students"), async (snap) => { cachedData = snap.docs.map(doc => ({id: doc.id, ...doc.data()})); render(); });
         onSnapshot(collection(db, "trials"), (snap) => { trialsData = snap.docs.map(doc => ({id: doc.id, ...doc.data()})); render(); });
-        document.getElementById('cancel-trial-convert').onclick = () => { if(!confirm('体験からの移行をキャンセルしますか？')) return; window.pendingTrialConversion = null; location.reload(); };
-        document.getElementById('clear-btn').onclick = () => location.reload(); document.getElementById('delete-btn').onclick = async () => { if(!confirm("削除しますか？")) return; await deleteDoc(doc(db, "students", document.getElementById('stu-id').value)); location.reload(); };
+        document.getElementById('cancel-trial-convert').onclick = () => { if(!confirm('体験からの移行をキャンセルしますか？')) return; window.pendingTrialConversion = null; };
+        document.getElementById('clear-btn').onclick = () => {
+            document.getElementById('stu-id').value = "";
+            document.getElementById('stu-name').value = "";
+            document.getElementById('stu-kana').value = "";
+            document.getElementById('stu-birth').value = "";
+            document.getElementById('grade-result').innerText = "-";
+            document.getElementById('zip').value = "";
+            document.getElementById('addr').value = "";
+            document.getElementById('email').value = "";
+            document.getElementById('tel1').value = "";
+            document.getElementById('tel2').value = "";
+            for(let i=1; i<=4; i++) {
+                document.getElementById('fam-name'+i).value = "";
+                document.getElementById('fam-kana'+i).value = "";
+                document.getElementById('fam-rel'+i).value = "";
+                document.getElementById('fam-birth'+i).value = "";
+                document.getElementById('fam-grade'+i).innerText = "-";
+                document.getElementById('fam-work'+i).value = "";
+            }
+            document.getElementById('schedule-container').innerHTML = "";
+            document.getElementById('delete-btn').classList.add('hidden');
+            window.editingId = null;
+            window.pendingTrialConversion = null;
+        };
+        document.getElementById('delete-btn').onclick = async () => { if(!confirm("削除しますか？")) return; await deleteDoc(doc(db, "students", document.getElementById('stu-id').value)); alert("削除しました"); document.getElementById('clear-btn').click(); };
         
         document.addEventListener('DOMContentLoaded', () => { 
             if (typeof YubinBango !== 'undefined') new YubinBango.Core(); 

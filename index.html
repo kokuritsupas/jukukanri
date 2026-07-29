@@ -132,7 +132,15 @@
                 <button id="clear-btn" class="w-full text-slate-400 py-2 underline">新規登録モードへ</button>
             </div>
 
-            <div id="tab2" class="tab-content"><div id="student-list"></div></div>
+            <div id="tab2" class="tab-content space-y-4">
+                <div class="p-3 bg-slate-100 rounded-lg border space-y-2">
+                    <div class="text-xs font-bold text-slate-700">一斉メール送信</div>
+                    <input type="text" id="bulk-mail-subject" placeholder="件名" class="input-styled !p-2 text-xs">
+                    <textarea id="bulk-mail-body" placeholder="本文を入力してください..." class="input-styled !p-2 text-xs h-24"></textarea>
+                    <button onclick="sendBulkMail()" class="w-full bg-blue-600 text-white py-2 rounded text-xs font-bold hover:bg-blue-700">登録済みメールアドレスへ一斉送信 (BCC)</button>
+                </div>
+                <div id="student-list"></div>
+            </div>
             <div id="tab3" class="tab-content space-y-4">
                 <div style="max-width: 600px; margin: 0 auto;" class="space-y-2">
                     <input type="date" id="cal-today" class="input-styled font-bold" style="color: #000 !important;">
@@ -321,6 +329,18 @@
             const sessions = rows.map(r => ({ date: r.querySelector('.s-date').value, time: r.querySelector('.s-time').value, sub: r.querySelector('.s-sub').value })).filter(r => r.date);
             await updateDoc(doc(db, "students", id), { summerSessions: sessions });
             alert("保存しました");
+        };
+
+        window.sendBulkMail = () => {
+            const emails = cachedData.map(s => s.email ? s.email.trim() : "").filter(Boolean);
+            if(emails.length === 0) {
+                alert("送信先となるメールアドレスが登録されている生徒がいません。");
+                return;
+            }
+            const subject = document.getElementById('bulk-mail-subject').value;
+            const body = document.getElementById('bulk-mail-body').value;
+            const mailtoUrl = `mailto:?bcc=${encodeURIComponent(emails.join(','))}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            window.location.href = mailtoUrl;
         };
 
         window.extractPersonalRange = () => {
@@ -613,14 +633,6 @@
                     timeGroups[tKey].events.push({name: s.name, id: s.id, time: sc.time, sub: sc.sub, attKey: `${todayStr}_${sc.time}`, status: (s.attendance || {})[`${todayStr}_${sc.time}`]}); 
                 });
 
-                (s.summerSessions || []).filter(sess => sess.date < todayStr).forEach(sess => {
-                    const smKey = `sm_${sess.date}_${sess.time}`;
-                    if (!(smKey in (s.attendance || {}))) {
-                        if (!s.attendance) s.attendance = {};
-                        s.attendance[smKey] = '欠席';
-                    }
-                });
-
                 (s.makeupReservations || []).filter(r => r.date === todayStr).forEach(r => {
                     let tKey = r.time;
                     if (!timeGroups[tKey]) timeGroups[tKey] = { title: tKey + "の予定", events: [], timeVal: getTimeKey(tKey) };
@@ -783,6 +795,9 @@
             
             if (status === '取消') {
                 delete attendance[attKey];
+                if (!isTrial) {
+                    reservations = reservations.filter(r => r.absKey !== attKey);
+                }
             } else if (status === '出席') { 
                 attendance[attKey] = '出席'; 
                 if (attKey.startsWith('makeup_') && absKey) {
@@ -876,6 +891,31 @@
             const localDate = new Date(today.getTime() - (offset * 60 * 1000));
             document.getElementById('cal-today').value = localDate.toISOString().split('T')[0];
         });
+
+        // パスワード認証画面表示中のソース表示・検証の抑止処理
+        const authModal = document.getElementById('auth-modal');
+        const preventSourceInspection = (e) => {
+            if (!authModal.classList.contains('hidden')) {
+                // 右クリックを禁止
+                if (e.type === 'contextmenu') {
+                    e.preventDefault();
+                    return false;
+                }
+                // ショートカットキー（F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U 等）を禁止
+                if (e.type === 'keydown') {
+                    if (
+                        e.key === 'F12' ||
+                        (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j' || e.key === 'C' || e.key === 'c')) ||
+                        (e.ctrlKey && (e.key === 'U' || e.key === 'u'))
+                    ) {
+                        e.preventDefault();
+                        return false;
+                    }
+                }
+            }
+        };
+        document.addEventListener('contextmenu', preventSourceInspection);
+        document.addEventListener('keydown', preventSourceInspection);
     </script>
 </body>
 </html>

@@ -54,12 +54,13 @@
         .sm-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; margin-bottom: 4px; align-items: center; }
         .sm-input { height: 36px !important; font-size: 12px !important; padding: 2px !important; }
 
-        /* 一番上に戻るボタン（矢印＋TOP文字 / 青基調・画面右下固定） */
-        .scrollTop-btn { position: fixed; bottom: 24px; right: 24px; z-index: 40; }
-        .scrollTop-btn button { background-color: #3b82f6; color: white; width: 56px; height: 56px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); transition: all 0.2s ease; border: none; cursor: pointer; padding: 4px; }
-        .scrollTop-btn button:hover { background-color: #2563eb; transform: translateY(-2px); box-shadow: 0 6px 16px rgba(37, 99, 235, 0.5); }
+        /* 一番上に戻るボタン（枠・矢印・文字が青色、内側透明の透かしデザイン / 画面右下固定） */
+        .scrollTop-btn { position: fixed; bottom: 24px; right: 24px; z-index: 40; opacity: 0.5; transition: opacity 0.25s ease, transform 0.2s ease; }
+        .scrollTop-btn:hover { opacity: 1; }
+        .scrollTop-btn button { background-color: transparent; color: #3b82f6; width: 56px; height: 56px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px solid #3b82f6; cursor: pointer; padding: 4px; }
+        .scrollTop-btn button:hover { background-color: rgba(59, 130, 246, 0.1); transform: translateY(-2px); }
         .scrollTop-btn button svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; margin-bottom: 2px; }
-        .scrollTop-btn button span { font-size: 10px; font-weight: bold; letter-spacing: 0.5px; line-height: 1; }
+        .scrollTop-btn button span { font-size: 10px; font-weight: bold; letter-spacing: 0.5px; line-height: 1; color: #3b82f6; }
         
         @media print {
             body * { visibility: hidden; }

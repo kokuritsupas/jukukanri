@@ -155,17 +155,29 @@
                 <div class="scrollTop-btn"><button onclick="window.scrollTo({top:0, behavior:'smooth'})"><svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"></polyline></svg><span>TOP</span></button></div>
                 <div style="max-width: 600px; margin: 0 auto;" class="space-y-2">
                     <input type="date" id="cal-today" class="input-styled font-bold" style="color: #000 !important;">
+                    
+                    <!-- 個人別期間スケジュール抽出 -->
                     <div class="p-3 bg-slate-100 rounded-lg border space-y-2">
                         <div class="text-xs font-bold text-slate-700">個人別期間スケジュール抽出</div>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
-                            <select id="range-student" class="input-styled !p-2 text-xs"><option value="">生徒を選択...</option></select>
+                        <select id="range-student" class="input-styled !p-2 text-xs"><option value="">生徒を選択...</option></select>
+                        <div class="grid grid-cols-2 gap-2">
                             <input type="date" id="range-start" class="input-styled !p-2 text-xs">
                             <input type="date" id="range-end" class="input-styled !p-2 text-xs">
                         </div>
                         <button onclick="extractPersonalRange()" class="w-full bg-slate-700 text-white py-2 rounded text-xs font-bold">抽出する</button>
                     </div>
-                    <div id="range-result-area"></div>
+
+                    <!-- 週間コマ一覧表抽出 -->
+                    <div class="p-3 bg-slate-100 rounded-lg border space-y-2">
+                        <div class="text-xs font-bold text-slate-700">週間コマ一覧表抽出</div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="date" id="weekly-range-start" class="input-styled !p-2 text-xs">
+                            <input type="date" id="weekly-range-end" class="input-styled !p-2 text-xs">
+                        </div>
+                        <button onclick="extractWeeklyList()" class="w-full bg-indigo-700 text-white py-2 rounded text-xs font-bold">週間コマ一覧表を表示</button>
+                    </div>
                 </div>
+                <div id="range-result-area" class="w-full"></div>
                 <div id="today-list" class="space-y-3 pt-2"></div>
             </div>
             <div id="tab4" class="tab-content makeup-container">
@@ -527,26 +539,221 @@
             resultArea.innerHTML = html;
         };
 
+        // 週間コマ一覧表の抽出・表示・印刷・PDF・閉じる機能
+        window.extractWeeklyList = () => {
+            const startDateStr = document.getElementById('weekly-range-start').value;
+            const endDateStr = document.getElementById('weekly-range-end').value;
+            const resultArea = document.getElementById('range-result-area');
+
+            if (!startDateStr || !endDateStr) {
+                alert("開始日と終了日の両方を指定してください");
+                return;
+            }
+
+            const startDate = new Date(startDateStr);
+            const endDate = new Date(endDateStr);
+            if (startDate > endDate) {
+                alert("開始日は終了日より前の日付を指定してください");
+                return;
+            }
+
+            let dateList = [];
+            let currDate = new Date(startDate);
+            const dayOfWeekNames = ["日", "月", "火", "水", "木", "金", "土"];
+
+            while (currDate <= endDate) {
+                const yyyy = currDate.getFullYear();
+                const mm = String(currDate.getMonth() + 1).padStart(2, '0');
+                const dd = String(currDate.getDate()).padStart(2, '0');
+                dateList.push({
+                    dateStr: `${yyyy}/${mm}/${dd}`,
+                    dashDateStr: `${yyyy}-${mm}-${dd}`,
+                    dayOfWeek: dayOfWeekNames[currDate.getDay()],
+                    monthDay: `${currDate.getMonth() + 1}/${currDate.getDate()}`
+                });
+                currDate.setDate(currDate.getDate() + 1);
+            }
+
+            const targetTimeSlots = [
+                "10:00～", "11:10～", "13:00～", "14:10～", "15:20～",
+                "①17:00", "17:00～", "②18:10", "18:10～", "③19:20", "19:20～", "④20:30", "20:30～"
+            ];
+            let timeSet = new Set(targetTimeSlots);
+            
+            cachedData.forEach(s => {
+                const attendanceMap = s.attendance || {};
+                dateList.forEach(dObj => {
+                    (s.schedules || []).forEach(sc => {
+                        if (sc.day === dObj.dayOfWeek) {
+                            const attKey = `${dObj.dashDateStr}_${sc.time}`;
+                            if (attendanceMap[attKey] !== '無' && attendanceMap[attKey] !== '欠席') {
+                                timeSet.add(sc.time);
+                            }
+                        }
+                    });
+                    (s.summerSessions || []).forEach(sess => {
+                        if (sess.date === dObj.dashDateStr) {
+                            const attKey = `sm_${sess.date}_${sess.time}`;
+                            if (attendanceMap[attKey] !== '無' && attendanceMap[attKey] !== '欠席') {
+                                timeSet.add(sess.time);
+                            }
+                        }
+                    });
+                    (s.makeupReservations || []).forEach(r => {
+                        if (!r.completed && r.date === dObj.dashDateStr) {
+                            const attKey = `makeup_${s.id}_${r.date}_${r.time}`;
+                            if (attendanceMap[attKey] !== '無' && attendanceMap[attKey] !== '欠席') {
+                                timeSet.add(r.time);
+                            }
+                        }
+                    });
+                });
+            });
+
+            let sortedTimes = Array.from(timeSet).sort((a, b) => getTimeKey(a) - getTimeKey(b));
+
+            let matrix = {};
+            sortedTimes.forEach(t => {
+                matrix[t] = {};
+                dateList.forEach(dObj => {
+                    matrix[t][dObj.dateStr] = [];
+                });
+            });
+
+            cachedData.forEach(s => {
+                const attendanceMap = s.attendance || {};
+
+                dateList.forEach(dObj => {
+                    (s.schedules || []).forEach(sc => {
+                        if (sc.day === dObj.dayOfWeek) {
+                            const attKey = `${dObj.dashDateStr}_${sc.time}`;
+                            if (attendanceMap[attKey] !== '無' && attendanceMap[attKey] !== '欠席') {
+                                let subText = sc.sub;
+                                let colorClass = "text-black"; 
+                                if (subText.includes("OL")) {
+                                    colorClass = "text-red-600 font-bold";
+                                }
+                                matrix[sc.time][dObj.dateStr].push({ name: s.name, sub: subText, colorClass: colorClass });
+                            }
+                        }
+                    });
+
+                    (s.summerSessions || []).forEach(sess => {
+                        if (sess.date === dObj.dashDateStr) {
+                            const attKey = `sm_${sess.date}_${sess.time}`;
+                            if (attendanceMap[attKey] !== '無' && attendanceMap[attKey] !== '欠席') {
+                                let subText = sess.sub + " (講習)";
+                                let colorClass = "text-blue-600 font-bold";
+                                if (subText.includes("OL")) {
+                                    colorClass = "text-red-600 font-bold";
+                                }
+                                matrix[sess.time][dObj.dateStr].push({ name: s.name, sub: subText, colorClass: colorClass });
+                            }
+                        }
+                    });
+
+                    (s.makeupReservations || []).forEach(r => {
+                        if (!r.completed && r.date === dObj.dashDateStr) {
+                            const attKey = `makeup_${s.id}_${r.date}_${r.time}`;
+                            if (attendanceMap[attKey] !== '無' && attendanceMap[attKey] !== '欠席') {
+                                let origSub = r.subject || "算数";
+                                if (!r.subject && r.absKey) {
+                                    const absTime = r.absKey.split('_')[1];
+                                    const origSc = (s.schedules || []).find(sc => sc.time === absTime);
+                                    if (origSc) origSub = origSc.sub;
+                                }
+                                let subText = origSub + " (振替)";
+                                let colorClass = "text-green-600 font-bold";
+                                if (subText.includes("OL")) {
+                                    colorClass = "text-red-600 font-bold";
+                                }
+                                matrix[r.time][dObj.dateStr].push({ name: s.name, sub: subText, colorClass: colorClass });
+                            }
+                        }
+                    });
+                });
+            });
+
+            let html = `
+                <div class="no-print flex justify-end gap-2 mb-2">
+                    <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded font-bold text-xs">印刷</button>
+                    <button onclick="downloadPDF()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded font-bold text-xs">PDF出力</button>
+                    <button onclick="document.getElementById('range-result-area').innerHTML=''" class="bg-slate-300 hover:bg-slate-400 text-slate-800 px-2 py-1 rounded font-bold text-xs">閉じる</button>
+                </div>
+                <div id="pdf-container-area" class="w-full bg-white border rounded shadow-sm p-3 overflow-x-auto" style="width: 210mm; box-sizing: border-box; margin: 0 auto; display: flex; flex-direction: column;">
+                    <div>
+                        <div class="font-bold text-sm mb-2 text-slate-800 border-b pb-1.5 flex justify-between items-center">
+                            <span>週間コマ一覧表 (10:00～20:30 全授業表示) : ${startDateStr} ～ ${endDateStr}</span>
+                            <span class="text-xs text-slate-500 font-normal">塾管理システム</span>
+                        </div>
+                        <table class="border-collapse border border-slate-300 text-[10px]" style="width: 100%; table-layout: fixed;">
+                            <thead>
+                                <tr class="bg-slate-100 text-slate-700">
+                                    <th class="border border-slate-300 p-1 text-center bg-slate-100 z-10" style="width: 45px;">時間</th>
+            `;
+
+            dateList.forEach(dObj => {
+                html += `<th class="border border-slate-300 p-1 text-center" style="width: calc((100% - 45px) / ${dateList.length});">${dObj.monthDay}<br>(${dObj.dayOfWeek})</th>`;
+            });
+
+            html += `
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+
+            sortedTimes.forEach(t => {
+                html += `
+                    <tr>
+                        <td class="border border-slate-300 p-1 font-bold text-center bg-slate-50 whitespace-nowrap text-[9px]">${t}</td>
+                `;
+
+                dateList.forEach(dObj => {
+                    let events = matrix[t][dObj.dateStr] || [];
+                    html += `<td class="border border-slate-300 p-0.5 align-top" style="height: 48px;">`;
+                    events.forEach(ev => {
+                        html += `
+                            <div class="mb-0.5 px-1 py-0.5 rounded bg-slate-50 border border-slate-200 ${ev.colorClass}" style="font-size: 9px; line-height: 1.2; white-space: nowrap; overflow: visible;">
+                                <span class="font-bold">${ev.name}</span> <span class="font-normal">${ev.sub}</span>
+                            </div>
+                        `;
+                    });
+                    html += `</td>`;
+                });
+
+                html += `</tr>`;
+            });
+
+            html += `
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="text-center text-slate-400 text-[10px] pt-2 pb-1 mt-auto">塾管理システム - 1 / 1ページ</div>
+                </div>
+            `;
+
+            resultArea.innerHTML = html;
+        };
+
         window.downloadPDF = async () => {
-            const targets = document.querySelectorAll('.pdf-target-page');
-            if (targets.length === 0) return;
+            const target = document.getElementById('pdf-container-area');
+            if (!target) return;
             const noPrintElements = document.querySelectorAll('.no-print');
             noPrintElements.forEach(el => el.style.display = 'none');
             try {
                 const { jsPDF } = window.jspdf;
+                const canvas = await html2canvas(target, { scale: 2, useCORS: true });
+                const imgData = canvas.toDataURL('image/png');
+                
                 const pdf = new jsPDF('p', 'mm', 'a4');
                 const pageWidth = pdf.internal.pageSize.getWidth();
                 const pageHeight = pdf.internal.pageSize.getHeight();
-
-                for (let i = 0; i < targets.length; i++) {
-                    const canvas = await html2canvas(targets[i], { scale: 2, useCORS: true, windowWidth: 800 });
-                    const imgData = canvas.toDataURL('image/png');
-                    
-                    if (i > 0) pdf.addPage();
-                    
-                    pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight);
-                }
-                pdf.save('schedule.pdf');
+                
+                const imgWidth = pageWidth;
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                
+                pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, Math.min(imgHeight, pageHeight));
+                pdf.save('weekly_schedule.pdf');
             } catch (err) {
                 console.error(err);
                 alert("PDFの出力に失敗しました。");
@@ -935,16 +1142,13 @@
             document.getElementById('cal-today').value = localDate.toISOString().split('T')[0];
         });
 
-        // パスワード認証画面表示中のソース表示・検証の抑止処理
         const authModal = document.getElementById('auth-modal');
         const preventSourceInspection = (e) => {
             if (!authModal.classList.contains('hidden')) {
-                // 右クリックを禁止
                 if (e.type === 'contextmenu') {
                     e.preventDefault();
                     return false;
                 }
-                // ショートカットキー（F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U 等）を禁止
                 if (e.type === 'keydown') {
                     if (
                         e.key === 'F12' ||

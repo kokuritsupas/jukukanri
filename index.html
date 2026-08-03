@@ -44,12 +44,13 @@
         .makeup-container { padding: 10px; }
         .makeup-group { margin-bottom: 16px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
         .makeup-name-header { background: #f1f5f9; padding: 8px; font-weight: bold; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; cursor: pointer; }
-        .makeup-row { display: grid; grid-template-columns: 1.4fr 1.5fr auto; align-items: center; gap: 6px; padding: 8px; border-bottom: 1px solid #f1f5f9; background: white; font-size: 12px; }
+        .makeup-row { display: grid; grid-template-columns: 1.4fr 1.5fr auto auto; align-items: center; gap: 6px; padding: 8px; border-bottom: 1px solid #f1f5f9; background: white; font-size: 12px; }
         .makeup-orig { color: #475569; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .makeup-inputs { display: flex; gap: 2px; }
         .makeup-inputs input, .makeup-inputs select { width: 100%; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; }
         .makeup-btn { padding: 6px 10px; background: #3b82f6; color: white; border-radius: 4px; font-weight: bold; font-size: 11px; white-space: nowrap; text-align: center; }
         .cancel-btn { padding: 6px 10px; background: #ef4444; color: white; border-radius: 4px; font-weight: bold; font-size: 11px; white-space: nowrap; text-align: center; }
+        .delete-makeup-btn { padding: 6px 10px; background: #64748b; color: white; border-radius: 4px; font-weight: bold; font-size: 11px; white-space: nowrap; text-align: center; }
 
         .sm-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; margin-bottom: 4px; align-items: center; }
         .sm-input { height: 36px !important; font-size: 12px !important; padding: 2px !important; }
@@ -159,22 +160,26 @@
                     <!-- 個人別期間スケジュール抽出 -->
                     <div class="p-3 bg-slate-100 rounded-lg border space-y-2">
                         <div class="text-xs font-bold text-slate-700">個人別期間スケジュール抽出</div>
-                        <select id="range-student" class="input-styled !p-2 text-xs"><option value="">生徒を選択...</option></select>
+                        <div class="grid grid-cols-[1fr_auto] gap-2 items-center">
+                            <select id="range-student" class="input-styled !p-2 text-xs"><option value="">生徒を選択...</option></select>
+                            <button onclick="extractPersonalRange()" class="bg-slate-700 text-white px-4 py-2 rounded text-xs font-bold whitespace-nowrap">抽出する</button>
+                        </div>
                         <div class="grid grid-cols-2 gap-2">
                             <input type="date" id="range-start" class="input-styled !p-2 text-xs">
                             <input type="date" id="range-end" class="input-styled !p-2 text-xs">
                         </div>
-                        <button onclick="extractPersonalRange()" class="w-full bg-slate-700 text-white py-2 rounded text-xs font-bold">抽出する</button>
                     </div>
 
                     <!-- 週間コマ一覧表抽出 -->
                     <div class="p-3 bg-slate-100 rounded-lg border space-y-2">
                         <div class="text-xs font-bold text-slate-700">週間コマ一覧表抽出</div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <input type="date" id="weekly-range-start" class="input-styled !p-2 text-xs">
-                            <input type="date" id="weekly-range-end" class="input-styled !p-2 text-xs">
+                        <div class="grid grid-cols-[1fr_auto] gap-2 items-center">
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="date" id="weekly-range-start" class="input-styled !p-2 text-xs">
+                                <input type="date" id="weekly-range-end" class="input-styled !p-2 text-xs">
+                            </div>
+                            <button onclick="extractWeeklyList()" class="bg-indigo-700 text-white px-4 py-2 rounded text-xs font-bold whitespace-nowrap">週間コマ一覧表を表示</button>
                         </div>
-                        <button onclick="extractWeeklyList()" class="w-full bg-indigo-700 text-white py-2 rounded text-xs font-bold">週間コマ一覧表を表示</button>
                     </div>
                 </div>
                 <div id="range-result-area" class="w-full"></div>
@@ -207,7 +212,7 @@
                     <option>数学OL</option><option>英語OL</option><option>理科OL</option>
                 </select>
                 <input type="date" id="trial-date" class="input-styled">
-                <select id="trial-time" class="input-styled"><option>①17:00</option><option>②18:10</option><option>③19:20</option><option>④20:30</option><option>⑤13:40</option><option>⑥14:50</option><option>⑦16:00</option><option>⑧17:30</option><option>⑨18:40</option><option>⑩19:50</option></select>
+                <select id="trial-time" class="input-styled"><option>17:00～</option><option>18:10～</option><option>19:20～</option><option>20:30～</option><option>13:40～</option><option>14:50～</option><option>16:00～</option><option>17:30～</option><option>18:40～</option><option>19:50～</option></select>
                 <button id="save-trial" class="btn-main">体験予約を保存</button>
             </div>
             <div id="tab7" class="tab-content makeup-container">
@@ -239,7 +244,7 @@
         let openMakeupIds = {};
         let openSummerIds = {};
         
-        const timeSlots = ["①17:00", "②18:10", "③19:20", "④20:30", "⑤13:40", "⑥14:50", "⑦16:00", "⑧17:30", "⑨18:40", "⑩19:50", "10:00～", "11:10～", "13:00～", "14:10～", "15:20～"];
+        const timeSlots = ["17:00～", "18:10～", "19:20～", "20:30～", "13:40～", "14:50～", "16:00～", "17:30～", "18:40～", "19:50～", "10:00～", "11:10～", "13:00～", "14:10～", "15:20～"];
         const summerTimeSlots = ["10:00～", "11:10～", "13:00～", "14:10～", "15:20～", "17:00～", "18:10～", "19:20～", "20:30～"];
         const subjects = ["算数", "数学", "英語", "国語", "理科", "社会", "数OL", "英OL", "理OL", "数学OL", "英語OL", "理科OL"];
         const timeOptions = timeSlots.map(t => `<option>${t}</option>`).join('');
@@ -254,8 +259,12 @@
             const m = str.match(/(\d{1,2}):(\d{2})/); 
             return m ? parseInt(m[1]) * 60 + parseInt(m[2]) : 0; 
         };
-        const getColor = (t) => { const colors = {'①': '#fee2e2', '②': '#fef3c7', '③': '#dcfce7', '④': '#dbeafe', '⑤': '#f1f5f9', '⑥': '#f3e8ff', '⑦': '#ffe4e6', '⑧': '#fef9c3', '⑨': '#ccfbf1', '⑩': '#e0f2fe'}; return colors[t.substring(0,1)] || '#fff59d'; };
-        const createRow = (d="月", t="①17:00", s="算数") => { const div = document.createElement('div'); div.className = "schedule-row"; div.style.backgroundColor = getColor(t); div.style.padding = "5px"; div.style.borderRadius = "4px"; div.style.marginBottom = "5px"; div.innerHTML = `<select class="day border p-2 text-sm bg-white"><option>月</option><option>火</option><option>水</option><option>木</option><option>金</option><option>土</option></select><select class="time border p-2 text-sm bg-white" onchange="this.parentElement.style.backgroundColor = getColor(this.value)">${timeOptions}</select><select class="sub border p-2 text-sm bg-white">${subjectOptions}</select>`; div.querySelector('.day').value = d; div.querySelector('.time').value = t; div.querySelector('.sub').value = s; return div; };
+        const getColor = (t) => { 
+            const cleanT = t.replace(/[①②③④⑤⑥⑦⑧⑨⑩]/g, '');
+            const colors = {'17:00': '#fee2e2', '18:10': '#fef3c7', '19:20': '#dcfce7', '20:30': '#dbeafe', '13:40': '#f1f5f9', '14:50': '#f3e8ff', '16:00': '#ffe4e6', '17:30': '#fef9c3', '18:40': '#ccfbf1', '19:50': '#e0f2fe'}; 
+            return colors[cleanT.substring(0, 5)] || '#fff59d'; 
+        };
+        const createRow = (d="月", t="17:00～", s="算数") => { const div = document.createElement('div'); div.className = "schedule-row"; div.style.backgroundColor = getColor(t); div.style.padding = "5px"; div.style.borderRadius = "4px"; div.style.marginBottom = "5px"; div.innerHTML = `<select class="day border p-2 text-sm bg-white"><option>月</option><option>火</option><option>水</option><option>木</option><option>金</option><option>土</option></select><select class="time border p-2 text-sm bg-white" onchange="this.parentElement.style.backgroundColor = getColor(this.value)">${timeOptions}</select><select class="sub border p-2 text-sm bg-white">${subjectOptions}</select>`; div.querySelector('.day').value = d; div.querySelector('.time').value = t; div.querySelector('.sub').value = s; return div; };
         
         window.calcGrade = (birthDate) => {
             if (!birthDate) return "-";
@@ -576,7 +585,7 @@
 
             const targetTimeSlots = [
                 "10:00～", "11:10～", "13:00～", "14:10～", "15:20～",
-                "①17:00", "17:00～", "②18:10", "18:10～", "③19:20", "19:20～", "④20:30", "20:30～"
+                "17:00～", "18:10～", "19:20～", "20:30～"
             ];
             let timeSet = new Set(targetTimeSlots);
             
@@ -840,8 +849,11 @@
 
                 const allAbsences = [...regularAbsences, ...summerAbsences];
                 const activeReservations = (s.makeupReservations || []).filter(r => !r.completed);
-                const remaining = allAbsences.length - activeReservations.length;
-                let schedHtml = (s.schedules || []).map(sc => `<span class="text-[10px] px-2 py-0.5 rounded whitespace-nowrap inline-block" style="background:${getColor(sc.time)}">${sc.time.substring(1)}:${sc.sub}</span>`).join('');
+                
+                // 【修正部分】未済（まだ予約が入れられていない欠席数）のみを正確にカウント
+                const remaining = allAbsences.filter(k => !activeReservations.some(r => r.absKey === k)).length;
+
+                let schedHtml = (s.schedules || []).map(sc => `<span class="text-[10px] px-2 py-0.5 rounded whitespace-nowrap inline-block" style="background:${getColor(sc.time)}">${sc.time.replace(/[①②③④⑤⑥⑦⑧⑨⑩]/g, '')}:${sc.sub}</span>`).join('');
                 
                 let rawListName = s.name || '';
                 let namePartsList = rawListName.trim().split(/[\s ]+/);
@@ -856,13 +868,13 @@
                 
                 (s.schedules || []).filter(sc => sc.day === dayStr).forEach(sc => { 
                     let tKey = sc.time;
-                    if (!timeGroups[tKey]) timeGroups[tKey] = { title: tKey + "の予定", events: [], timeVal: getTimeKey(tKey) };
+                    if (!timeGroups[tKey]) timeGroups[tKey] = { title: tKey.replace(/[①②③④⑤⑥⑦⑧⑨⑩]/g, '') + "の予定", events: [], timeVal: getTimeKey(tKey) };
                     timeGroups[tKey].events.push({name: s.name, id: s.id, time: sc.time, sub: sc.sub, attKey: `${todayStr}_${sc.time}`, status: (s.attendance || {})[`${todayStr}_${sc.time}`]}); 
                 });
 
-                (s.makeupReservations || []).filter(r => r.date === todayStr).forEach(r => {
+                (s.makeupReservations || []).filter(r => !r.completed && r.date === todayStr).forEach(r => {
                     let tKey = r.time;
-                    if (!timeGroups[tKey]) timeGroups[tKey] = { title: tKey + "の予定", events: [], timeVal: getTimeKey(tKey) };
+                    if (!timeGroups[tKey]) timeGroups[tKey] = { title: tKey.replace(/[①②③④⑤⑥⑦⑧⑨⑩]/g, '') + "の予定", events: [], timeVal: getTimeKey(tKey) };
                     
                     let origSub = r.subject || "算数";
                     if (!r.subject && r.absKey) {
@@ -883,15 +895,35 @@
                     });
                 });
                 
-                if (allAbsences.length > 0) {
+                const displayableAbsences = allAbsences.filter(k => {
+                    const res = activeReservations.find(r => r.absKey === k);
+                    if (!res) return true;
+                    const makeupAttKey = `makeup_${s.id}_${res.date}_${res.time}`;
+                    return (s.attendance || {})[makeupAttKey] !== '出席';
+                });
+
+                const displayableReservations = activeReservations.filter(r => {
+                    const makeupAttKey = `makeup_${s.id}_${r.date}_${r.time}`;
+                    return (s.attendance || {})[makeupAttKey] !== '出席';
+                });
+
+                if (displayableAbsences.length > 0 || displayableReservations.length > 0) {
                     let groupDiv = document.createElement('div');
                     groupDiv.className = "makeup-group";
                     let isMakeupOpen = !!openMakeupIds[s.id];
                     groupDiv.innerHTML = `<div class="makeup-name-header" onclick="toggleMakeupGroup('${s.id}')"><span>${s.name}</span><span>振替残: ${remaining} ${isMakeupOpen ? '▲' : '▼'}</span></div><div class="${isMakeupOpen ? '' : 'hidden'}" id="makeup-body-${s.id}"></div>`;
                     let bodyContainer = groupDiv.querySelector(`#makeup-body-${s.id}`);
-                    allAbsences.forEach(k => { 
+                    
+                    let displayedKeys = new Set([...displayableAbsences, ...displayableReservations.map(r => r.absKey).filter(Boolean)]);
+
+                    Array.from(displayedKeys).forEach(k => { 
                         const res = activeReservations.find(r => r.absKey === k);
                         
+                        if (res) {
+                            const makeupAttKey = `makeup_${s.id}_${res.date}_${res.time}`;
+                            if ((s.attendance || {})[makeupAttKey] === '出席') return;
+                        }
+
                         let defaultSub = "算数";
                         if (k.startsWith('sm_')) {
                             const parts = k.split('_');
@@ -899,7 +931,7 @@
                             const smTime = parts[2] || '';
                             const foundSess = (s.summerSessions || []).find(sess => sess.date === smDate && sess.time === smTime);
                             if (foundSess) defaultSub = foundSess.sub;
-                        } else {
+                        } else if (k.includes('_')) {
                             const parts = k.split('_');
                             const absDate = parts[0] || '';
                             const absTime = parts[1] || '';
@@ -913,27 +945,32 @@
                             const parts = k.split('_');
                             const smDate = parts[1] || '';
                             const smTime = parts[2] || '';
+                            const smCleanTime = smTime.replace(/[①②③④⑤⑥⑦⑧⑨⑩]/g, '');
                             const smDayOfWeek = ["日", "月", "火", "水", "木", "金", "土"][new Date(smDate.replace(/-/g, '/')).getDay()];
-                            displayOrigText = `${smDate.replace(/-/g, '/')} (${smDayOfWeek}) ${smTime} [${defaultSub} (講習)]`;
-                        } else {
+                            displayOrigText = `${smDate.replace(/-/g, '/')} (${smDayOfWeek}) ${smCleanTime} [${defaultSub} (講習)]`;
+                        } else if (k.includes('_')) {
                             const parts = k.split('_');
                             const absDate = parts[0] || '';
                             const absTime = parts[1] || '';
+                            const absCleanTime = absTime.replace(/[①②③④⑤⑥⑦⑧⑨⑩]/g, '');
                             const absDayOfWeek = ["日", "月", "火", "水", "木", "金", "土"][new Date(absDate.replace(/-/g, '/')).getDay()];
-                            displayOrigText = `${absDate.replace(/-/g, '/')} (${absDayOfWeek}) ${absTime} [${defaultSub}]`;
+                            displayOrigText = `${absDate.replace(/-/g, '/')} (${absDayOfWeek}) ${absCleanTime} [${defaultSub}]`;
+                        } else {
+                            displayOrigText = `振替元データ (${k})`;
                         }
 
                         let resDisplay = "";
                         if (res) {
                             const resDate = res.date.replace(/-/g, '/');
                             const resDayOfWeek = ["日", "月", "火", "水", "木", "金", "土"][new Date(res.date.replace(/-/g, '/')).getDay()];
+                            const resCleanTime = res.time.replace(/[①②③④⑤⑥⑦⑧⑨⑩]/g, '');
                             const resSub = res.subject || defaultSub;
-                            resDisplay = `${resDate} (${resDayOfWeek}) ${res.time} [${resSub}]`;
+                            resDisplay = `${resDate} (${resDayOfWeek}) ${resCleanTime} [${resSub}]`;
                         }
 
                         bodyContainer.innerHTML += `<div class="makeup-row"><div class="makeup-orig">${displayOrigText}</div>` + 
-                        (res ? `<div class="makeup-inputs justify-center text-blue-600">${resDisplay}</div><button onclick="cancelMakeup('${s.id}','${k}')" class="cancel-btn">取消</button>` : 
-                        `<div class="makeup-inputs"><input type="date" id="d-${k}"><select id="t-${k}">${timeOptions}</select><select id="sub-${k}">${subjects.map(sub => `<option ${sub === defaultSub ? 'selected' : ''}>${sub}</option>`).join('')}</select></div><button onclick="bookMakeupCustom('${s.id}','${k}')" class="makeup-btn">予約</button>`) + `</div>`; 
+                        (res ? `<div class="makeup-inputs justify-center text-blue-600">${resDisplay}</div><button onclick="cancelMakeup('${s.id}','${k}')" class="cancel-btn">取消</button><button onclick="deleteMakeupReservation('${s.id}','${k}')" class="delete-makeup-btn">予約削除</button>` : 
+                        `<div class="makeup-inputs"><input type="date" id="d-${k}"><select id="t-${k}">${timeOptions}</select><select id="sub-${k}">${subjects.map(sub => `<option ${sub === defaultSub ? 'selected' : ''}>${sub}</option>`).join('')}</select></div><button onclick="bookMakeupCustom('${s.id}','${k}')" class="makeup-btn">予約</button><div></div>`) + `</div>`; 
                     });
                     makeupList.appendChild(groupDiv);
                 }
@@ -941,11 +978,11 @@
             
             trialsData.forEach(t => {
                 if(!t.registered) {
-                    trialList.innerHTML += `<div class="p-2 border rounded flex justify-between items-center text-sm"><div><strong>${t.name}</strong> ${[t.grade, t.sub].filter(Boolean).join(" ")}<br>${t.date} ${t.time}</div><div class="flex gap-1"><button onclick="window.convertTrial({id:'${t.id}', name:'${t.name}', grade:'${t.grade}'})" class="bg-blue-600 text-white px-2 py-1 rounded">入塾へ</button><button onclick="window.deleteTrial('${t.id}')" class="bg-red-500 text-white px-2 py-1 rounded">取消</button></div></div>`;
+                    trialList.innerHTML += `<div class="p-2 border rounded flex justify-between items-center text-sm"><div><strong>${t.name}</strong> ${[t.grade, t.sub].filter(Boolean).join(" ")}<br>${t.date} ${t.time.replace(/[①②③④⑤⑥⑦⑧⑨⑩]/g, '')}</div><div class="flex gap-1"><button onclick="window.convertTrial({id:'${t.id}', name:'${t.name}', grade:'${t.grade}'})" class="bg-blue-600 text-white px-2 py-1 rounded">入塾へ</button><button onclick="window.deleteTrial('${t.id}')" class="bg-red-500 text-white px-2 py-1 rounded">取消</button></div></div>`;
                 }
                 if(t.date === todayStr) {
                     let tKey = t.time;
-                    if (!timeGroups[tKey]) timeGroups[tKey] = { title: tKey + "の予定", events: [], timeVal: getTimeKey(tKey) };
+                    if (!timeGroups[tKey]) timeGroups[tKey] = { title: tKey.replace(/[①②③④⑤⑥⑦⑧⑨⑩]/g, '') + "の予定", events: [], timeVal: getTimeKey(tKey) };
                     timeGroups[tKey].events.push({name: t.name + " (体験)", id: t.id, isTrial: true, time: t.time, sub: [t.grade, t.sub].filter(Boolean).join(" ") || "体験", attKey: `trial_${t.id}`, status: (t.attendance || {})[`trial_${t.id}`]});
                 }
             });
@@ -1029,9 +1066,28 @@
                 attendance[attKey] = '出席'; 
                 if (attKey.startsWith('makeup_') && absKey) {
                     attendance[absKey] = '出席';
+                    reservations = reservations.map(r => r.absKey === absKey ? { ...r, completed: true } : r);
+                } else if (attKey.startsWith('makeup_') && !absKey) {
+                    const parts = attKey.replace(`makeup_${id}_`, '').split('_');
+                    const resDate = parts.slice(0, -1).join('_');
+                    const resTime = parts[parts.length - 1];
+                    const matchedRes = reservations.find(r => r.date === resDate && r.time === resTime);
+                    if (matchedRes && matchedRes.absKey) {
+                        attendance[matchedRes.absKey] = '出席';
+                    }
+                    reservations = reservations.map(r => (r.date === resDate && r.time === resTime) ? { ...r, completed: true } : r);
                 }
             } else {
                 attendance[attKey] = status;
+                if (attKey.startsWith('makeup_') && status === '欠席') {
+                    const parts = attKey.replace(`makeup_${id}_`, '').split('_');
+                    const resDate = parts.slice(0, -1).join('_');
+                    const resTime = parts[parts.length - 1];
+                    reservations = reservations.map(r => (r.date === resDate && r.time === resTime) ? { ...r, completed: false } : r);
+                    if (absKey) {
+                        reservations = reservations.map(r => r.absKey === absKey ? { ...r, completed: false } : r);
+                    }
+                }
             }
             
             await updateDoc(ref, { attendance, ...(isTrial ? {} : { makeupReservations: reservations }) });
@@ -1040,6 +1096,19 @@
 
         window.cancelMakeup = async (id, absKey) => { if(!confirm("予約を取り消しますか？")) return; const ref = doc(db, "students", id); const snap = await getDoc(ref); let data = snap.data(); let res = (data.makeupReservations || []).filter(r => r.absKey !== absKey); await updateDoc(ref, { makeupReservations: res }); render(); }; 
         
+        window.deleteMakeupReservation = async (id, absKey) => {
+            if(!confirm("この振替予定を完全に削除しますか？")) return;
+            const ref = doc(db, "students", id);
+            const snap = await getDoc(ref);
+            let data = snap.data();
+            let attendance = data.attendance || {};
+            let reservations = (data.makeupReservations || []).filter(r => r.absKey !== absKey);
+            delete attendance[absKey];
+            await updateDoc(ref, { attendance, makeupReservations: reservations });
+            alert("振替予定を削除しました");
+            render();
+        };
+
         window.bookMakeupCustom = async (id, absKey) => { 
             const date = document.getElementById(`d-${absKey}`).value; 
             const time = document.getElementById(`t-${absKey}`).value; 

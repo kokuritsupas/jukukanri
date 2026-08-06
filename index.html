@@ -90,6 +90,7 @@
             <p class="text-xs text-slate-600">システムを利用するにはパスワードを入力してください。</p>
             <input type="password" id="auth-password" placeholder="パスワードを入力" class="input-styled">
             <button id="auth-btn" class="btn-main">ログイン</button>
+            <button onclick="openPasswordChangeModalFromAuth()" class="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 py-2 rounded text-xs font-bold">パスワード変更</button>
             <div id="auth-error" class="text-xs text-red-500 font-bold text-center hidden">パスワードが間違っています</div>
         </div>
     </div>
@@ -99,7 +100,6 @@
         <div>
             <div class="flex justify-between items-center mb-4">
                 <h1 class="text-xl font-bold border-l-4 border-slate-800 pl-3 m-0">塾管理システム</h1>
-                <button onclick="openPasswordChangeModal()" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1.5 rounded font-bold">パスワード変更</button>
             </div>
             <nav class="flex border-b mb-6 overflow-hidden bg-slate-100 rounded-t-lg">
                 <button id="nav1" class="nav-btn nav-active-tab">登録編集</button>
@@ -303,7 +303,7 @@
             alert("期間を保存しました");
         };
 
-        window.openPasswordChangeModal = () => {
+        window.openPasswordChangeModalFromAuth = () => {
             document.getElementById('old-password').value = "";
             document.getElementById('new-password').value = "";
             document.getElementById('password-change-error').classList.add('hidden');
@@ -689,20 +689,20 @@
                     <button onclick="downloadPDF()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded font-bold text-xs">PDF出力</button>
                     <button onclick="document.getElementById('range-result-area').innerHTML=''" class="bg-slate-300 hover:bg-slate-400 text-slate-800 px-2 py-1 rounded font-bold text-xs">閉じる</button>
                 </div>
-                <div id="pdf-container-area" class="w-full bg-white border rounded shadow-sm p-3 overflow-x-auto" style="width: 210mm; box-sizing: border-box; margin: 0 auto; display: flex; flex-direction: column;">
+                <div id="pdf-container-area" class="w-full bg-white border rounded shadow-sm p-3 overflow-x-auto" style="width: 257mm; box-sizing: border-box; margin: 0 auto; display: flex; flex-direction: column;">
                     <div>
                         <div class="font-bold text-sm mb-2 text-slate-800 border-b pb-1.5 flex justify-between items-center">
                             <span>週間コマ一覧表 (10:00～20:30 全授業表示) : ${startDateStr} ～ ${endDateStr}</span>
                             <span class="text-xs text-slate-500 font-normal">塾管理システム</span>
                         </div>
-                        <table class="border-collapse border border-slate-300 text-[10px]" style="width: 100%; table-layout: fixed;">
+                        <table class="border-collapse border border-slate-300 text-xs" style="width: 100%; table-layout: fixed;">
                             <thead>
                                 <tr class="bg-slate-100 text-slate-700">
-                                    <th class="border border-slate-300 p-1 text-center bg-slate-100 z-10" style="width: 45px;">時間</th>
+                                    <th class="border border-slate-300 p-2 text-center bg-slate-100 z-10" style="width: 55px;">時間</th>
             `;
 
             dateList.forEach(dObj => {
-                html += `<th class="border border-slate-300 p-1 text-center" style="width: calc((100% - 45px) / ${dateList.length});">${dObj.monthDay}<br>(${dObj.dayOfWeek})</th>`;
+                html += `<th class="border border-slate-300 p-2 text-center" style="width: calc((100% - 55px) / ${dateList.length});">${dObj.monthDay}<br>(${dObj.dayOfWeek})</th>`;
             });
 
             html += `
@@ -714,16 +714,26 @@
             sortedTimes.forEach(t => {
                 html += `
                     <tr>
-                        <td class="border border-slate-300 p-1 font-bold text-center bg-slate-50 whitespace-nowrap text-[9px]">${t}</td>
+                        <td class="border border-slate-300 p-2 font-bold text-center bg-slate-50 whitespace-nowrap text-xs">${t}</td>
                 `;
 
                 dateList.forEach(dObj => {
                     let events = matrix[t][dObj.dateStr] || [];
-                    html += `<td class="border border-slate-300 p-0.5 align-top" style="height: 48px;">`;
+                    // OLを下に、それ以外の教科を上に並べるソート
+                    events.sort((a, b) => {
+                        const aIsOL = a.sub.includes('OL');
+                        const bIsOL = b.sub.includes('OL');
+                        if (aIsOL === bIsOL) return 0;
+                        return aIsOL ? 1 : -1;
+                    });
+
+                    /* 修正部分：名前や教科名が絶対に切れないよう全体を明確に表示・収容するための安全なスタイル */
+                    html += `<td class="border border-slate-300 p-1.5 align-top" style="vertical-align: top;">`;
                     events.forEach(ev => {
                         html += `
-                            <div class="mb-0.5 px-1 py-0.5 rounded bg-slate-50 border border-slate-200 ${ev.colorClass}" style="font-size: 9px; line-height: 1.2; white-space: nowrap; overflow: visible;">
-                                <span class="font-bold">${ev.name}</span> <span class="font-normal">${ev.sub}</span>
+                            <div class="mb-1.5 p-1 rounded bg-slate-50 border border-slate-200 ${ev.colorClass}" style="font-size: 11px; line-height: 1.4; display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                                <div class="font-bold" style="white-space: nowrap; overflow: visible; max-width: 55%;">${ev.name}</div>
+                                <div class="font-normal" style="white-space: nowrap; overflow: visible; max-width: 45%; text-align: right;">${ev.sub}</div>
                             </div>
                         `;
                     });
@@ -737,7 +747,7 @@
                             </tbody>
                         </table>
                     </div>
-                    <div class="text-center text-slate-400 text-[10px] pt-2 pb-1 mt-auto">塾管理システム - 1 / 1ページ</div>
+                    <div class="text-center text-slate-400 text-[10px] pt-2 pb-1 mt-auto">塾管理システム - 1 / 2ページ (B4縦)</div>
                 </div>
             `;
 
@@ -749,12 +759,19 @@
             if (!target) return;
             const noPrintElements = document.querySelectorAll('.no-print');
             noPrintElements.forEach(el => el.style.display = 'none');
+            
+            // 修正部分：B4縦サイズ（257mm x 380mm）で名前や教科名が絶対に切れないよう最適にPDF出力
             try {
                 const { jsPDF } = window.jspdf;
-                const canvas = await html2canvas(target, { scale: 2, useCORS: true });
+                const canvas = await html2canvas(target, { 
+                    scale: 2, 
+                    useCORS: true,
+                    windowWidth: 1400 
+                });
                 const imgData = canvas.toDataURL('image/png');
                 
-                const pdf = new jsPDF('p', 'mm', 'a4');
+                // B4縦の設定: [257, 380]
+                const pdf = new jsPDF('p', 'mm', [257, 380]);
                 const pageWidth = pdf.internal.pageSize.getWidth();
                 const pageHeight = pdf.internal.pageSize.getHeight();
                 
@@ -762,7 +779,7 @@
                 const imgHeight = (canvas.height * imgWidth) / canvas.width;
                 
                 pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, Math.min(imgHeight, pageHeight));
-                pdf.save('weekly_schedule.pdf');
+                pdf.save('weekly_schedule_b4.pdf');
             } catch (err) {
                 console.error(err);
                 alert("PDFの出力に失敗しました。");
@@ -850,7 +867,6 @@
                 const allAbsences = [...regularAbsences, ...summerAbsences];
                 const activeReservations = (s.makeupReservations || []).filter(r => !r.completed);
                 
-                // 【修正部分】未済（まだ予約が入れられていない欠席数）のみを正確にカウント
                 const remaining = allAbsences.filter(k => !activeReservations.some(r => r.absKey === k)).length;
 
                 let schedHtml = (s.schedules || []).map(sc => `<span class="text-[10px] px-2 py-0.5 rounded whitespace-nowrap inline-block" style="background:${getColor(sc.time)}">${sc.time.replace(/[①②③④⑤⑥⑦⑧⑨⑩]/g, '')}:${sc.sub}</span>`).join('');
@@ -1011,6 +1027,15 @@
 
             Object.keys(timeGroups).sort((a,b) => timeGroups[a].timeVal - timeGroups[b].timeVal).forEach(k => {
                 todayList.innerHTML += `<div class="font-bold text-slate-700 mt-6 mb-2 border-b border-slate-300" style="max-width: 600px; margin: 12px auto 4px auto;">${timeGroups[k].title}</div>`;
+                
+                // 予定タブにおけるOLを下に、それ以外の教科を上に並べるソート
+                timeGroups[k].events.sort((a, b) => {
+                    const aIsOL = a.sub.includes('OL');
+                    const bIsOL = b.sub.includes('OL');
+                    if (aIsOL === bIsOL) return 0;
+                    return aIsOL ? 1 : -1;
+                });
+
                 timeGroups[k].events.forEach(ev => {
                     let rawName = ev.name.replace(/\s*\(体験\)$/, '');
                     let suffix = ev.name.includes('(体験)') ? ' (体験)' : '';
@@ -1051,6 +1076,57 @@
         }; 
 
         window.setAtt = async (id, attKey, status, absKey='', isTrial=false) => { 
+            if (isTrial) {
+                const targetTrial = trialsData.find(t => t.id === id);
+                if (targetTrial) {
+                    if (!targetTrial.attendance) targetTrial.attendance = {};
+                    if (status === '取消') {
+                        delete targetTrial.attendance[attKey];
+                    } else {
+                        targetTrial.attendance[attKey] = status;
+                    }
+                }
+            } else {
+                const targetStudent = cachedData.find(s => s.id === id);
+                if (targetStudent) {
+                    if (!targetStudent.attendance) targetStudent.attendance = {};
+                    if (!targetStudent.makeupReservations) targetStudent.makeupReservations = [];
+
+                    if (status === '取消') {
+                        delete targetStudent.attendance[attKey];
+                        targetStudent.makeupReservations = targetStudent.makeupReservations.filter(r => r.absKey !== attKey);
+                    } else if (status === '出席') { 
+                        targetStudent.attendance[attKey] = '出席'; 
+                        if (attKey.startsWith('makeup_')) {
+                            const parts = attKey.replace(`makeup_${id}_`, '').split('_');
+                            const resDate = parts.slice(0, -1).join('_');
+                            const resTime = parts[parts.length - 1];
+                            const matchedRes = targetStudent.makeupReservations.find(r => r.date === resDate && r.time === resTime);
+                            
+                            const targetAbsKey = absKey || (matchedRes ? matchedRes.absKey : '');
+                            if (targetAbsKey) {
+                                targetStudent.attendance[targetAbsKey] = '無';
+                            }
+                            targetStudent.makeupReservations = targetStudent.makeupReservations.map(r => 
+                                (r.absKey === targetAbsKey || (r.date === resDate && r.time === resTime)) ? { ...r, completed: true } : r
+                            );
+                        }
+                    } else {
+                        targetStudent.attendance[attKey] = status;
+                        if (attKey.startsWith('makeup_') && status === '欠席') {
+                            const parts = attKey.replace(`makeup_${id}_`, '').split('_');
+                            const resDate = parts.slice(0, -1).join('_');
+                            const resTime = parts[parts.length - 1];
+                            targetStudent.makeupReservations = targetStudent.makeupReservations.map(r => (r.date === resDate && r.time === resTime) ? { ...r, completed: false } : r);
+                            if (absKey) {
+                                targetStudent.makeupReservations = targetStudent.makeupReservations.map(r => r.absKey === absKey ? { ...r, completed: false } : r);
+                            }
+                        }
+                    }
+                }
+            }
+            render();
+
             const ref = doc(db, isTrial ? "trials" : "students", id); 
             const snap = await getDoc(ref); 
             let data = snap.data(); 
@@ -1064,18 +1140,19 @@
                 }
             } else if (status === '出席') { 
                 attendance[attKey] = '出席'; 
-                if (attKey.startsWith('makeup_') && absKey) {
-                    attendance[absKey] = '出席';
-                    reservations = reservations.map(r => r.absKey === absKey ? { ...r, completed: true } : r);
-                } else if (attKey.startsWith('makeup_') && !absKey) {
+                if (attKey.startsWith('makeup_')) {
                     const parts = attKey.replace(`makeup_${id}_`, '').split('_');
                     const resDate = parts.slice(0, -1).join('_');
                     const resTime = parts[parts.length - 1];
                     const matchedRes = reservations.find(r => r.date === resDate && r.time === resTime);
-                    if (matchedRes && matchedRes.absKey) {
-                        attendance[matchedRes.absKey] = '出席';
+                    
+                    const targetAbsKey = absKey || (matchedRes ? matchedRes.absKey : '');
+                    if (targetAbsKey) {
+                        attendance[targetAbsKey] = '無';
                     }
-                    reservations = reservations.map(r => (r.date === resDate && r.time === resTime) ? { ...r, completed: true } : r);
+                    reservations = reservations.map(r => 
+                        (r.absKey === targetAbsKey || (r.date === resDate && r.time === resTime)) ? { ...r, completed: true } : r
+                    );
                 }
             } else {
                 attendance[attKey] = status;
@@ -1091,7 +1168,6 @@
             }
             
             await updateDoc(ref, { attendance, ...(isTrial ? {} : { makeupReservations: reservations }) });
-            render();
         };
 
         window.cancelMakeup = async (id, absKey) => { if(!confirm("予約を取り消しますか？")) return; const ref = doc(db, "students", id); const snap = await getDoc(ref); let data = snap.data(); let res = (data.makeupReservations || []).filter(r => r.absKey !== absKey); await updateDoc(ref, { makeupReservations: res }); render(); }; 

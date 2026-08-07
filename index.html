@@ -619,6 +619,21 @@
                 });
             });
 
+            // 体験授業の時間も週間コマ一覧表の時間軸に確実に反映させる
+            trialsData.forEach(t => {
+                if (!t.registered && t.date) {
+                    dateList.forEach(dObj => {
+                        if (t.date === dObj.dashDateStr) {
+                            const attKey = `trial_${t.id}`;
+                            const attendanceMap = t.attendance || {};
+                            if (attendanceMap[attKey] !== '無' && attendanceMap[attKey] !== '欠席') {
+                                if (t.time) timeSet.add(t.time);
+                            }
+                        }
+                    });
+                }
+            });
+
             let sortedTimes = Array.from(timeSet).sort((a, b) => getTimeKey(a) - getTimeKey(b));
 
             let matrix = {};
@@ -683,6 +698,25 @@
                 });
             });
 
+            // 体験授業を週間コマ一覧表のマトリクスに反映させる
+            trialsData.forEach(t => {
+                if (!t.registered && t.date) {
+                    dateList.forEach(dObj => {
+                        if (t.date === dObj.dashDateStr) {
+                            const attKey = `trial_${t.id}`;
+                            const attendanceMap = t.attendance || {};
+                            if (attendanceMap[attKey] !== '無' && attendanceMap[attKey] !== '欠席') {
+                                if (matrix[t.time] && matrix[t.time][dObj.dateStr]) {
+                                    let subText = [t.grade, t.sub].filter(Boolean).join(" ") + " (体験)";
+                                    let colorClass = "text-purple-600 font-bold";
+                                    matrix[t.time][dObj.dateStr].push({ name: t.name, sub: subText, colorClass: colorClass });
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+
             let html = `
                 <div class="no-print flex justify-end gap-2 mb-2">
                     <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded font-bold text-xs">印刷</button>
@@ -727,12 +761,21 @@
                         return aIsOL ? 1 : -1;
                     });
 
-                    /* 修正部分：名前や教科名が絶対に切れないよう全体を明確に表示・収容するための安全なスタイル */
+                    /* 修正部分：名前や教科名が絶対に切れないよう全体を明確に表示・収容するための安全なスタイル、およびスマホ画面での体験授業等の生徒氏名を2段表示にする処理 */
                     html += `<td class="border border-slate-300 p-1.5 align-top" style="vertical-align: top;">`;
                     events.forEach(ev => {
+                        let rawWeeklyName = ev.name || '';
+                        let weeklyNameParts = rawWeeklyName.trim().split(/[\s ]+/);
+                        let weeklyNameHtml = '';
+                        if (weeklyNameParts.length >= 2) {
+                            weeklyNameHtml = `<div class="name-display-area"><div>${weeklyNameParts[0]}</div><div>${weeklyNameParts.slice(1).join(' ')}</div></div>`;
+                        } else {
+                            weeklyNameHtml = `<span>${rawWeeklyName}</span>`;
+                        }
+
                         html += `
                             <div class="mb-1.5 p-1 rounded bg-slate-50 border border-slate-200 ${ev.colorClass}" style="font-size: 11px; line-height: 1.4; display: flex; align-items: center; justify-content: space-between; gap: 4px;">
-                                <div class="font-bold" style="white-space: nowrap; overflow: visible; max-width: 55%;">${ev.name}</div>
+                                <div class="font-bold" style="white-space: nowrap; overflow: visible; max-width: 55%;">${weeklyNameHtml}</div>
                                 <div class="font-normal" style="white-space: nowrap; overflow: visible; max-width: 45%; text-align: right;">${ev.sub}</div>
                             </div>
                         `;

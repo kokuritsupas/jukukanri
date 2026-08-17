@@ -761,7 +761,7 @@
                         return aIsOL ? 1 : -1;
                     });
 
-                    /* 修正部分：名前や教科名が絶対に切れないよう全体を明確に表示・収容するための安全なスタイル、およびスマホ画面での体験授業等の生徒氏名を2段表示にする処理 */
+                    /* 名前や教科名が絶対に切れないよう全体を明確に表示・収容するための安全なスタイル、およびスマホ画面での体験授業等の生徒氏名を2段表示にする処理 */
                     html += `<td class="border border-slate-300 p-1.5 align-top" style="vertical-align: top;">`;
                     events.forEach(ev => {
                         let rawWeeklyName = ev.name || '';
@@ -803,7 +803,6 @@
             const noPrintElements = document.querySelectorAll('.no-print');
             noPrintElements.forEach(el => el.style.display = 'none');
             
-            // 修正部分：B4縦サイズ（257mm x 380mm）で名前や教科名が絶対に切れないよう最適にPDF出力
             try {
                 const { jsPDF } = window.jspdf;
                 const canvas = await html2canvas(target, { 
@@ -813,7 +812,6 @@
                 });
                 const imgData = canvas.toDataURL('image/png');
                 
-                // B4縦の設定: [257, 380]
                 const pdf = new jsPDF('p', 'mm', [257, 380]);
                 const pageWidth = pdf.internal.pageSize.getWidth();
                 const pageHeight = pdf.internal.pageSize.getHeight();
@@ -829,6 +827,69 @@
             } finally {
                 noPrintElements.forEach(el => el.style.display = '');
             }
+        };
+
+        window.toggleTimeChangeUI = (btn, id, attKey, currentTime, isSummer, isMakeup, isTrial) => {
+            let parent = btn.parentElement;
+            let existing = parent.querySelector('.time-change-container');
+            if (existing) {
+                existing.remove();
+                return;
+            }
+            document.querySelectorAll('.time-change-container').forEach(el => el.remove());
+
+            let container = document.createElement('div');
+            container.className = "time-change-container flex items-center gap-1 mt-1 md:mt-0";
+            container.innerHTML = `
+                <select class="border p-1 text-xs bg-white rounded time-select">${timeOptions}</select>
+                <button onclick="applyTimeChange('${id}', '${attKey}', '${currentTime}', ${isSummer}, ${isMakeup}, ${isTrial}, this)" class="bg-blue-600 text-white px-2 py-1 rounded text-xs font-bold">変更</button>
+            `;
+            container.querySelector('.time-select').value = currentTime;
+            parent.appendChild(container);
+        };
+
+        window.applyTimeChange = async (id, attKey, oldTime, isSummer, isMakeup, isTrial, btn) => {
+            const container = btn.parentElement;
+            const newTime = container.querySelector('.time-select').value;
+            if (!newTime || newTime === oldTime) {
+                container.remove();
+                return;
+            }
+
+            if (isTrial) {
+                const t = trialsData.find(item => item.id === id);
+                if (t) {
+                    t.time = newTime;
+                    await updateDoc(doc(db, "trials", id), { time: newTime });
+                }
+            } else {
+                const s = cachedData.find(item => item.id === id);
+                if (s) {
+                    if (isSummer) {
+                        const parts = attKey.split('_');
+                        const smDate = parts[1];
+                        const smTime = parts[2];
+                        if (s.summerSessions) {
+                            s.summerSessions = s.summerSessions.map(sess => (sess.date === smDate && sess.time === smTime) ? { ...sess, time: newTime } : sess);
+                            await updateDoc(doc(db, "students", id), { summerSessions: s.summerSessions });
+                        }
+                    } else if (attKey.startsWith('makeup_')) {
+                        const parts = attKey.replace(`makeup_${id}_`, '').split('_');
+                        const resDate = parts.slice(0, -1).join('_');
+                        const resTime = parts[parts.length - 1];
+                        if (s.makeupReservations) {
+                            s.makeupReservations = s.makeupReservations.map(r => (r.date === resDate && r.time === resTime) ? { ...r, time: newTime } : r);
+                            await updateDoc(doc(db, "students", id), { makeupReservations: s.makeupReservations });
+                        }
+                    } else {
+                        if (!s.timeChanges) s.timeChanges = {};
+                        s.timeChanges[attKey] = newTime;
+                        await updateDoc(doc(db, "students", id), { timeChanges: s.timeChanges });
+                    }
+                }
+            }
+            alert("時間を変更しました");
+            render();
         };
 
         const render = () => { 
@@ -926,9 +987,11 @@
                 studentList.innerHTML += `<div class="student-row"><span class="font-bold text-slate-400 text-sm">${index + 1}.</span><div class="student-main-info"><span onclick="window.editMode('${s.id}')" class="cursor-pointer font-bold text-blue-600 underline">${nameHtmlList}</span><span class="text-xs text-slate-500">${s.grade || ''}</span></div><span class="rem-count ${remaining === 0 ? 'rem-zero' : 'rem-positive'}">振替:${remaining}</span><div class="student-schedules">${schedHtml}</div></div>`;
                 
                 (s.schedules || []).filter(sc => sc.day === dayStr).forEach(sc => { 
-                    let tKey = sc.time;
+                    let origAttKey = `${todayStr}_${sc.time}`;
+                    let tKey = (s.timeChanges && s.timeChanges[origAttKey]) ? s.timeChanges[origAttKey] : sc.time;
+                    let attKey = origAttKey;
                     if (!timeGroups[tKey]) timeGroups[tKey] = { title: tKey.replace(/[①②③④⑤⑥⑦⑧⑨⑩]/g, '') + "の予定", events: [], timeVal: getTimeKey(tKey) };
-                    timeGroups[tKey].events.push({name: s.name, id: s.id, time: sc.time, sub: sc.sub, attKey: `${todayStr}_${sc.time}`, status: (s.attendance || {})[`${todayStr}_${sc.time}`]}); 
+                    timeGroups[tKey].events.push({name: s.name, id: s.id, time: tKey, sub: sc.sub, attKey: attKey, status: (s.attendance || {})[attKey]}); 
                 });
 
                 (s.makeupReservations || []).filter(r => !r.completed && r.date === todayStr).forEach(r => {
@@ -1085,6 +1148,7 @@
                     let nameParts = rawName.trim().split(/[\s ]+/);
                     let nameHtml = '';
                     if (nameParts.length >= 2) {
+                        /* 修正部分：体験生の氏名も他の生徒と同様に2行表示（name-display-area）になるように変更 */
                         nameHtml = `<div class="name-display-area"><div>${nameParts[0]}</div><div>${nameParts.slice(1).join(' ')}</div></div>${suffix}`;
                     } else {
                         nameHtml = `${rawName}${suffix}`;
@@ -1107,11 +1171,12 @@
                                 </div>
                             </div>
                             <span class="text-xs md:text-sm font-medium leading-tight" style="word-break:break-word;">${subHtml}</span>
-                            <div class="flex gap-1 shrink-0">
+                            <div class="flex gap-1 shrink-0 items-center">
                                 <button onclick="setAtt('${ev.id}','${ev.attKey}','出席','${ev.absKey || ''}', ${!!ev.isTrial || false})" class="att-btn ${ev.status === '出席' ? 'bg-blue-500 text-white' : ''}">出</button>
                                 <button onclick="setAtt('${ev.id}','${ev.attKey}','欠席','${ev.absKey || ''}', ${!!ev.isTrial || false})" class="att-btn ${ev.status === '欠席' ? 'bg-red-500 text-white' : ''}">欠</button>
                                 <button onclick="setAtt('${ev.id}','${ev.attKey}','無','${ev.absKey || ''}', ${!!ev.isTrial || false})" class="att-btn ${ev.status === '無' ? 'bg-slate-500 text-white' : ''}">無</button>
                                 <button onclick="setAtt('${ev.id}','${ev.attKey}','取消','${ev.absKey || ''}', ${!!ev.isTrial || false})" class="att-btn">取</button>
+                                <button onclick="toggleTimeChangeUI(this, '${ev.id}', '${ev.attKey}', '${ev.time}', ${!!ev.isSummer}, ${!!ev.makeup}, ${!!ev.isTrial})" class="att-btn bg-amber-100 hover:bg-amber-200 text-amber-800">変</button>
                             </div>
                         </div>`;
                 });

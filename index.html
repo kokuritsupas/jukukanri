@@ -30,8 +30,8 @@
         .grade-box { border: 2px solid #cbd5e1; padding: 10px; border-radius: 6px; width: 100%; background: #f8fafc; font-size: 16px; box-sizing: border-box; }
         .grade-value { color: #000000; font-weight: 500; }
         
-        .grid-row { display: grid; grid-template-columns: 1fr 1fr auto; align-items: center; gap: 10px; padding: 16px; border: 1px solid #e2e8f0; border-radius: 8px; background: white; max-width: 600px; margin: 0 auto; }
-        .att-btn { border: 1px solid #cbd5e1; padding: 8px 12px; border-radius: 6px; font-size: 14px; font-weight: bold; }
+        .grid-row { display: grid; grid-template-columns: 1fr 1fr auto; align-items: center; gap: 6px; padding: 12px 10px; border: 1px solid #e2e8f0; border-radius: 8px; background: white; max-width: 600px; margin: 0 auto; }
+        .att-btn { border: 1px solid #cbd5e1; padding: 6px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; }
         
         .student-row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; padding: 12px; border-bottom: 1px solid #e2e8f0; background: white; }
         .student-main-info { display: flex; align-items: baseline; gap: 6px; }
@@ -447,7 +447,7 @@
                         if (status !== '無' && status !== '欠席') {
                             const formattedDate = sess.date.replace(/-/g, '/');
                             const sessDayOfWeek = dayOfWeekNames[sessDate.getDay()];
-                            events.push({ date: formattedDate, dayOfWeek: sessDayOfWeek, time: sess.time, sub: sess.sub + " (講習)", type: '講習' });
+                            events.push({ date: formattedDate, dayOfWeek: sessDayOfWeek, time: sess.time, sub: sess.sub + " 講習", type: '講習' });
                         }
                     }
                 }
@@ -470,7 +470,7 @@
                                 if (origSc) origSub = origSc.sub;
                             }
 
-                            events.push({ date: formattedDate, dayOfWeek: rDayOfWeek, time: r.time, sub: origSub + " (振替)", type: '振替' });
+                            events.push({ date: formattedDate, dayOfWeek: rDayOfWeek, time: r.time, sub: origSub + " 振替", type: '振替' });
                         }
                     }
                 }
@@ -666,7 +666,7 @@
                         if (sess.date === dObj.dashDateStr) {
                             const attKey = `sm_${sess.date}_${sess.time}`;
                             if (attendanceMap[attKey] !== '無' && attendanceMap[attKey] !== '欠席') {
-                                let subText = sess.sub + " (講習)";
+                                let subText = sess.sub + " 講習";
                                 let colorClass = "text-blue-600 font-bold";
                                 if (subText.includes("OL")) {
                                     colorClass = "text-red-600 font-bold";
@@ -686,8 +686,8 @@
                                     const origSc = (s.schedules || []).find(sc => sc.time === absTime);
                                     if (origSc) origSub = origSc.sub;
                                 }
-                                let subText = origSub + " (振替)";
-                                let colorClass = "text-green-600 font-bold";
+                                let subText = origSub + " 振替";
+                                let colorClass = "text-red-600 font-bold";
                                 if (subText.includes("OL")) {
                                     colorClass = "text-red-600 font-bold";
                                 }
@@ -941,7 +941,7 @@
                         if (sess.date === todayStr) {
                             let tKey = sess.time;
                             if (!timeGroups[tKey]) timeGroups[tKey] = { title: tKey + "の予定", events: [], timeVal: getTimeKey(tKey) };
-                            timeGroups[tKey].events.push({name: s.name, id: s.id, time: sess.time, sub: sess.sub + " (講習)", attKey: `sm_${sess.date}_${sess.time}`, status: (s.attendance || {})[`sm_${sess.date}_${sess.time}`], isSummer: true});
+                            timeGroups[tKey].events.push({name: s.name, id: s.id, time: sess.time, sub: sess.sub + " 講習", attKey: `sm_${sess.date}_${sess.time}`, status: (s.attendance || {})[`sm_${sess.date}_${sess.time}`], isSummer: true});
                         }
                     });
                 }
@@ -1009,7 +1009,7 @@
                         name: s.name, 
                         id: s.id, 
                         time: r.time, 
-                        sub: origSub + " (振替)", 
+                        sub: origSub + " 振替", 
                         attKey: `makeup_${s.id}_${r.date}_${r.time}`, 
                         absKey: r.absKey, 
                         makeup: true, 
@@ -1069,7 +1069,7 @@
                             const smTime = parts[2] || '';
                             const smCleanTime = smTime.replace(/[①②③④⑤⑥⑦⑧⑨⑩]/g, '');
                             const smDayOfWeek = ["日", "月", "火", "水", "木", "金", "土"][new Date(smDate.replace(/-/g, '/')).getDay()];
-                            displayOrigText = `${smDate.replace(/-/g, '/')} (${smDayOfWeek}) ${smCleanTime} [${defaultSub} (講習)]`;
+                            displayOrigText = `${smDate.replace(/-/g, '/')} (${smDayOfWeek}) ${smCleanTime} [${defaultSub} 講習]`;
                         } else if (k.includes('_')) {
                             const parts = k.split('_');
                             const absDate = parts[0] || '';
@@ -1155,10 +1155,10 @@
                     }
 
                     let subHtml = ev.sub;
-                    if (subHtml.includes(' (振替)')) {
-                        subHtml = subHtml.replace(' (振替)', '<br><span class="text-[11px] font-normal text-slate-600">(振替)</span>');
-                    } else if (subHtml.includes(' (講習)')) {
-                        subHtml = subHtml.replace(' (講習)', '<br><span class="text-[11px] font-normal text-slate-600">(講習)</span>');
+                    if (subHtml.includes(' 振替')) {
+                        subHtml = subHtml.replace(' 振替', '<br><span class="text-[11px] font-bold text-red-600">振替</span>');
+                    } else if (subHtml.includes(' 講習')) {
+                        subHtml = subHtml.replace(' 講習', '<br><span class="text-[11px] font-bold text-blue-600">講習</span>');
                     } else {
                         subHtml = subHtml.replace(/([^\s]+)\s*(\([^\)]+\))/, '$1<br><span class="text-[11px] font-normal text-slate-600">$2</span>');
                     }

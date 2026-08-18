@@ -14,12 +14,12 @@
         body { font-family: sans-serif; overflow-x:hidden; touch-action: manipulation; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        .nav-btn { flex: 1; padding: 12px 2px; font-weight: bold; font-size: 12px; transition: all 0.2s; white-space: nowrap; border-bottom: 3px solid transparent; text-align: center; }
+        .nav-btn { flex: 1; padding: 12px 2px; font-weight: bold; font-size: 11px; transition: all 0.2s; white-space: nowrap; border-bottom: 3px solid transparent; text-align: center; }
         
         #nav1 { background: #b3d7ff !important; color: #4a5568; border-bottom-color: #80bfff; }
         #nav2 { background: #ffeaa7 !important; color: #4a5568; border-bottom-color: #ffe066; }
         #nav3 { background: #b2f2bb !important; color: #4a5568; border-bottom-color: #8ce99a; }
-        #nav4 { background: #ffc9c9 !important; color: #4a5568; border-bottom-color: #ffa8a8; }
+        #nav8 { background: #ffd8a8 !important; color: #4a5568; border-bottom-color: #ffa94d; }
         #nav5 { background: #eebefa !important; color: #4a5568; border-bottom-color: #d896ff; }
         #nav6 { background: #f1f3f5 !important; color: #4a5568; border-bottom-color: #ced4da; }
         #nav7 { background: #fff59d !important; color: #4a5568; border-bottom-color: #fdd835; }
@@ -55,7 +55,6 @@
         .sm-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; margin-bottom: 4px; align-items: center; }
         .sm-input { height: 36px !important; font-size: 12px !important; padding: 2px !important; }
 
-        /* 一番上に戻るボタン（濃い青色・太めの線・内側透明のデザイン / 画面右下固定） */
         .scrollTop-btn { position: fixed; bottom: 24px; right: 24px; z-index: 40; opacity: 0.6; transition: opacity 0.25s ease, transform 0.2s ease; }
         .scrollTop-btn:hover { opacity: 1; }
         .scrollTop-btn button { background-color: transparent; color: #1d4ed8; width: 56px; height: 56px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 3px solid #1d4ed8; cursor: pointer; padding: 4px; }
@@ -105,7 +104,7 @@
                 <button id="nav1" class="nav-btn nav-active-tab">登録編集</button>
                 <button id="nav2" class="nav-btn">一覧</button>
                 <button id="nav3" class="nav-btn">予定</button>
-                <button id="nav4" class="nav-btn">振替</button>
+                <button id="nav8" class="nav-btn">振替</button>
                 <button id="nav5" class="nav-btn">詳細</button>
                 <button id="nav6" class="nav-btn">体験</button>
                 <button id="nav7" class="nav-btn">講習管理</button>
@@ -157,7 +156,6 @@
                 <div style="max-width: 600px; margin: 0 auto;" class="space-y-2">
                     <input type="date" id="cal-today" class="input-styled font-bold" style="color: #000 !important;">
                     
-                    <!-- 個人別期間スケジュール抽出 -->
                     <div class="p-3 bg-slate-100 rounded-lg border space-y-2">
                         <div class="text-xs font-bold text-slate-700">個人別期間スケジュール抽出</div>
                         <div class="grid grid-cols-[1fr_auto] gap-2 items-center">
@@ -170,7 +168,6 @@
                         </div>
                     </div>
 
-                    <!-- 週間コマ一覧表抽出 -->
                     <div class="p-3 bg-slate-100 rounded-lg border space-y-2">
                         <div class="text-xs font-bold text-slate-700">週間コマ一覧表抽出</div>
                         <div class="grid grid-cols-[1fr_auto] gap-2 items-center">
@@ -185,9 +182,10 @@
                 <div id="range-result-area" class="w-full"></div>
                 <div id="today-list" class="space-y-3 pt-2"></div>
             </div>
-            <div id="tab4" class="tab-content makeup-container">
+            <!-- 振替タブ -->
+            <div id="tab8" class="tab-content makeup-container">
                 <div class="scrollTop-btn"><button onclick="window.scrollTo({top:0, behavior:'smooth'})"><svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"></polyline></svg><span>TOP</span></button></div>
-                <div id="makeup-list" class="space-y-1"></div>
+                <div id="new-makeup-list" class="space-y-1"></div>
             </div>
             <div id="tab5" class="tab-content space-y-4">
                 <div class="scrollTop-btn"><button onclick="window.scrollTo({top:0, behavior:'smooth'})"><svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"></polyline></svg><span>TOP</span></button></div>
@@ -241,7 +239,7 @@
         import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, updateDoc, deleteDoc, addDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
         const db = getFirestore(initializeApp({ apiKey: "YOUR_API_KEY", projectId: "juku-kanri-system", storageBucket: "juku-kanri-system.firebasestorage.app", messagingSenderId: "525148833125", appId: "1:525148833125:web:36bee786e3545bd7908d8c" }));
         let cachedData = []; let trialsData = []; let courseDates = { start: '', end: '', password: 'koji1516' };
-        let openMakeupIds = {};
+        let openNewMakeupIds = {};
         let openSummerIds = {};
         
         const timeSlots = ["17:00～", "18:10～", "19:20～", "20:30～", "13:40～", "14:50～", "16:00～", "17:30～", "18:40～", "19:50～", "10:00～", "11:10～", "13:00～", "14:10～", "15:20～"];
@@ -346,8 +344,8 @@
             }
         };
 
-        window.toggleMakeupGroup = (id) => {
-            openMakeupIds[id] = !openMakeupIds[id];
+        window.toggleNewMakeupGroup = (id) => {
+            openNewMakeupIds[id] = !openNewMakeupIds[id];
             render();
         };
 
@@ -548,7 +546,6 @@
             resultArea.innerHTML = html;
         };
 
-        // 週間コマ一覧表の抽出・表示・印刷・PDF・閉じる機能
         window.extractWeeklyList = () => {
             const startDateStr = document.getElementById('weekly-range-start').value;
             const endDateStr = document.getElementById('weekly-range-end').value;
@@ -619,7 +616,6 @@
                 });
             });
 
-            // 体験授業の時間も週間コマ一覧表の時間軸に確実に反映させる
             trialsData.forEach(t => {
                 if (!t.registered && t.date) {
                     dateList.forEach(dObj => {
@@ -698,7 +694,6 @@
                 });
             });
 
-            // 体験授業を週間コマ一覧表のマトリクスに反映させる
             trialsData.forEach(t => {
                 if (!t.registered && t.date) {
                     dateList.forEach(dObj => {
@@ -753,7 +748,6 @@
 
                 dateList.forEach(dObj => {
                     let events = matrix[t][dObj.dateStr] || [];
-                    // OLを下に、それ以外の教科を上に並べるソート
                     events.sort((a, b) => {
                         const aIsOL = a.sub.includes('OL');
                         const bIsOL = b.sub.includes('OL');
@@ -761,7 +755,6 @@
                         return aIsOL ? 1 : -1;
                     });
 
-                    /* 名前や教科名が絶対に切れないよう全体を明確に表示・収容するための安全なスタイル、およびスマホ画面での体験授業等の生徒氏名を2段表示にする処理 */
                     html += `<td class="border border-slate-300 p-1.5 align-top" style="vertical-align: top;">`;
                     events.forEach(ev => {
                         let rawWeeklyName = ev.name || '';
@@ -897,7 +890,7 @@
             const dayStr = ["日", "月", "火", "水", "木", "金", "土"][new Date(todayStr).getDay()]; 
             const studentList = document.getElementById('student-list'); 
             const todayList = document.getElementById('today-list'); 
-            const makeupList = document.getElementById('makeup-list'); 
+            const newMakeupList = document.getElementById('new-makeup-list'); 
             const trialList = document.getElementById('trial-list');
             const searchBox = document.getElementById('search-box'); 
             const rangeStudent = document.getElementById('range-student');
@@ -915,7 +908,7 @@
                 </div>
                 <div class="font-bold text-lg p-2 bg-slate-100 rounded-t">講習管理</div>
             `;
-            makeupList.innerHTML = "<div class='font-bold text-lg p-2 bg-slate-100 rounded-t'>振替指定</div>"; 
+            newMakeupList.innerHTML = "<div class='font-bold text-lg p-2 bg-slate-100 rounded-t'>振替予約一覧</div>"; 
             searchBox.innerHTML = '<option value="">名前を選択してください...</option>'; 
             const currentSelectedRangeStudent = rangeStudent.value;
             rangeStudent.innerHTML = '<option value="">生徒を選択...</option>';
@@ -1029,13 +1022,7 @@
                     return (s.attendance || {})[makeupAttKey] !== '出席';
                 });
 
-                if (displayableAbsences.length > 0 || displayableReservations.length > 0) {
-                    let groupDiv = document.createElement('div');
-                    groupDiv.className = "makeup-group";
-                    let isMakeupOpen = !!openMakeupIds[s.id];
-                    groupDiv.innerHTML = `<div class="makeup-name-header" onclick="toggleMakeupGroup('${s.id}')"><span>${s.name}</span><span>振替残: ${remaining} ${isMakeupOpen ? '▲' : '▼'}</span></div><div class="${isMakeupOpen ? '' : 'hidden'}" id="makeup-body-${s.id}"></div>`;
-                    let bodyContainer = groupDiv.querySelector(`#makeup-body-${s.id}`);
-                    
+                const renderAbsenceRows = (containerEl, isNewTab = false) => {
                     let displayedKeys = new Set([...displayableAbsences, ...displayableReservations.map(r => r.absKey).filter(Boolean)]);
 
                     Array.from(displayedKeys).forEach(k => { 
@@ -1090,11 +1077,24 @@
                             resDisplay = `${resDate} (${resDayOfWeek}) ${resCleanTime} [${resSub}]`;
                         }
 
-                        bodyContainer.innerHTML += `<div class="makeup-row"><div class="makeup-orig">${displayOrigText}</div>` + 
-                        (res ? `<div class="makeup-inputs justify-center text-blue-600">${resDisplay}</div><button onclick="cancelMakeup('${s.id}','${k}')" class="cancel-btn">取消</button><button onclick="deleteMakeupReservation('${s.id}','${k}')" class="delete-makeup-btn">予約削除</button>` : 
-                        `<div class="makeup-inputs"><input type="date" id="d-${k}"><select id="t-${k}">${timeOptions}</select><select id="sub-${k}">${subjects.map(sub => `<option ${sub === defaultSub ? 'selected' : ''}>${sub}</option>`).join('')}</select></div><button onclick="bookMakeupCustom('${s.id}','${k}')" class="makeup-btn">予約</button><div></div>`) + `</div>`; 
+                        const prefix = isNewTab ? 'new-' : '';
+                        const safeKey = prefix + s.id + '-' + k.replace(/[^a-zA-Z0-9-_]/g, '_');
+
+                        containerEl.innerHTML += `<div class="makeup-row"><div class="makeup-orig">${displayOrigText}</div>` + 
+                        (res ? `<div class="makeup-inputs justify-center text-blue-600">${resDisplay}</div><button onclick="cancelMakeup('${s.id}','${k}')" class="cancel-btn">取消</button><button onclick="deleteMakeupReservation('${s.id}','${k}')" class="delete-makeup-btn">削除</button>` : 
+                        `<div class="makeup-inputs"><input type="date" id="d-${safeKey}" class="input-styled" style="padding:4px; min-height:auto;"><select id="t-${safeKey}">${timeOptions}</select><select id="sub-${safeKey}">${subjects.map(sub => `<option ${sub === defaultSub ? 'selected' : ''}>${sub}</option>`).join('')}</select></div><button onclick="bookMakeupCustom('${s.id}','${k}', ${isNewTab})" class="makeup-btn">予約</button><div></div>`) + `</div>`; 
                     });
-                    makeupList.appendChild(groupDiv);
+                };
+
+                if (displayableAbsences.length > 0 || displayableReservations.length > 0) {
+                    // 新タブ (振替)
+                    let newGroupDiv = document.createElement('div');
+                    newGroupDiv.className = "makeup-group";
+                    let isNewMakeupOpen = !!openNewMakeupIds[s.id];
+                    newGroupDiv.innerHTML = `<div class="makeup-name-header" onclick="toggleNewMakeupGroup('${s.id}')"><span>${s.name}</span><span>振替残: ${remaining} ${isNewMakeupOpen ? '▲' : '▼'}</span></div><div class="${isNewMakeupOpen ? '' : 'hidden'}" id="new-makeup-body-${s.id}"></div>`;
+                    let newBodyContainer = newGroupDiv.querySelector(`#new-makeup-body-${s.id}`);
+                    renderAbsenceRows(newBodyContainer, true);
+                    newMakeupList.appendChild(newGroupDiv);
                 }
             }); 
             
@@ -1110,31 +1110,33 @@
             });
 
             setTimeout(() => {
-                const makeupGroups = makeupList.querySelectorAll('.makeup-group');
-                makeupGroups.forEach(group => {
-                    const bodyContainer = group.querySelector(`[id^="makeup-body-"]`);
-                    if (!bodyContainer) return;
-                    const rows = Array.from(bodyContainer.querySelectorAll('.makeup-row'));
-                    rows.sort((a, b) => {
-                        const textA = a.querySelector('.makeup-orig').textContent.trim();
-                        const textB = b.querySelector('.makeup-orig').textContent.trim();
-                        const partsA = textA.split(' ');
-                        const partsB = textB.split(' ');
-                        const dateA = partsA[0] || '';
-                        const dateB = partsB[0] || '';
-                        if (dateA !== dateB) return dateA.localeCompare(dateB);
-                        const timeA = partsA[2] || '';
-                        const timeB = partsB[2] || '';
-                        return getTimeKey(timeA) - getTimeKey(timeB);
+                const sortGroups = (listContainer) => {
+                    const groups = listContainer.querySelectorAll('.makeup-group');
+                    groups.forEach(group => {
+                        const bodyContainer = group.querySelector(`[id$="body-"]`);
+                        if (!bodyContainer) return;
+                        const rows = Array.from(bodyContainer.querySelectorAll('.makeup-row'));
+                        rows.sort((a, b) => {
+                            const textA = a.querySelector('.makeup-orig').textContent.trim();
+                            const textB = b.querySelector('.makeup-orig').textContent.trim();
+                            const partsA = textA.split(' ');
+                            const partsB = textB.split(' ');
+                            const dateA = partsA[0] || '';
+                            const dateB = partsB[0] || '';
+                            if (dateA !== dateB) return dateA.localeCompare(dateB);
+                            const timeA = partsA[2] || '';
+                            const timeB = partsB[2] || '';
+                            return getTimeKey(timeA) - getTimeKey(timeB);
+                        });
+                        rows.forEach(row => bodyContainer.appendChild(row));
                     });
-                    rows.forEach(row => bodyContainer.appendChild(row));
-                });
+                };
+                sortGroups(newMakeupList);
             }, 0);
 
             Object.keys(timeGroups).sort((a,b) => timeGroups[a].timeVal - timeGroups[b].timeVal).forEach(k => {
                 todayList.innerHTML += `<div class="font-bold text-slate-700 mt-6 mb-2 border-b border-slate-300" style="max-width: 600px; margin: 12px auto 4px auto;">${timeGroups[k].title}</div>`;
                 
-                // 予定タブにおけるOLを下に、それ以外の教科を上に並べるソート
                 timeGroups[k].events.sort((a, b) => {
                     const aIsOL = a.sub.includes('OL');
                     const bIsOL = b.sub.includes('OL');
@@ -1148,7 +1150,6 @@
                     let nameParts = rawName.trim().split(/[\s ]+/);
                     let nameHtml = '';
                     if (nameParts.length >= 2) {
-                        /* 修正部分：体験生の氏名も他の生徒と同様に2行表示（name-display-area）になるように変更 */
                         nameHtml = `<div class="name-display-area"><div>${nameParts[0]}</div><div>${nameParts.slice(1).join(' ')}</div></div>${suffix}`;
                     } else {
                         nameHtml = `${rawName}${suffix}`;
@@ -1293,10 +1294,17 @@
             render();
         };
 
-        window.bookMakeupCustom = async (id, absKey) => { 
-            const date = document.getElementById(`d-${absKey}`).value; 
-            const time = document.getElementById(`t-${absKey}`).value; 
-            const subject = document.getElementById(`sub-${absKey}`).value; 
+        window.bookMakeupCustom = async (id, absKey, isNewTab = false) => { 
+            const prefix = isNewTab ? 'new-' : '';
+            const safeKey = prefix + id + '-' + absKey.replace(/[^a-zA-Z0-9-_]/g, '_');
+            const dateInput = document.getElementById(`d-${safeKey}`);
+            const timeInput = document.getElementById(`t-${safeKey}`);
+            const subInput = document.getElementById(`sub-${safeKey}`);
+
+            const date = dateInput ? dateInput.value : '';
+            const time = timeInput ? timeInput.value : '';
+            const subject = subInput ? subInput.value : '';
+
             if(!date) return alert("日付を選択してください"); 
             const ref = doc(db, "students", id); 
             const snap = await getDoc(ref); 
@@ -1309,7 +1317,7 @@
         };
 
         window.bookMakeup = async (id, absKey, subject) => {
-            window.bookMakeupCustom(id, absKey);
+            window.bookMakeupCustom(id, absKey, false);
         };
         
         document.getElementById('search-box').onchange = (e) => { 
@@ -1394,28 +1402,7 @@
             const localDate = new Date(today.getTime() - (offset * 60 * 1000));
             document.getElementById('cal-today').value = localDate.toISOString().split('T')[0];
         });
-
-        const authModal = document.getElementById('auth-modal');
-        const preventSourceInspection = (e) => {
-            if (!authModal.classList.contains('hidden')) {
-                if (e.type === 'contextmenu') {
-                    e.preventDefault();
-                    return false;
-                }
-                if (e.type === 'keydown') {
-                    if (
-                        e.key === 'F12' ||
-                        (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j' || e.key === 'C' || e.key === 'c')) ||
-                        (e.ctrlKey && (e.key === 'U' || e.key === 'u'))
-                    ) {
-                        e.preventDefault();
-                        return false;
-                    }
-                }
-            }
-        };
-        document.addEventListener('contextmenu', preventSourceInspection);
-        document.addEventListener('keydown', preventSourceInspection);
     </script>
 </body>
 </html>
+```[cite: 8]

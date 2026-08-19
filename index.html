@@ -588,12 +588,15 @@
             
             cachedData.forEach(s => {
                 const attendanceMap = s.attendance || {};
+                const timeChanges = s.timeChanges || {};
                 dateList.forEach(dObj => {
                     (s.schedules || []).forEach(sc => {
                         if (sc.day === dObj.dayOfWeek) {
-                            const attKey = `${dObj.dashDateStr}_${sc.time}`;
+                            const origAttKey = `${dObj.dashDateStr}_${sc.time}`;
+                            const attKey = origAttKey;
                             if (attendanceMap[attKey] !== '無' && attendanceMap[attKey] !== '欠席') {
-                                timeSet.add(sc.time);
+                                const effectiveTime = timeChanges[origAttKey] ? timeChanges[origAttKey] : sc.time;
+                                timeSet.add(effectiveTime);
                             }
                         }
                     });
@@ -642,18 +645,21 @@
 
             cachedData.forEach(s => {
                 const attendanceMap = s.attendance || {};
+                const timeChanges = s.timeChanges || {};
 
                 dateList.forEach(dObj => {
                     (s.schedules || []).forEach(sc => {
                         if (sc.day === dObj.dayOfWeek) {
-                            const attKey = `${dObj.dashDateStr}_${sc.time}`;
+                            const origAttKey = `${dObj.dashDateStr}_${sc.time}`;
+                            const attKey = origAttKey;
                             if (attendanceMap[attKey] !== '無' && attendanceMap[attKey] !== '欠席') {
+                                const effectiveTime = timeChanges[origAttKey] ? timeChanges[origAttKey] : sc.time;
                                 let subText = sc.sub;
                                 let colorClass = "text-black"; 
                                 if (subText.includes("OL")) {
                                     colorClass = "text-red-600 font-bold";
                                 }
-                                matrix[sc.time][dObj.dateStr].push({ name: s.name, sub: subText, colorClass: colorClass });
+                                matrix[effectiveTime][dObj.dateStr].push({ name: s.name, sub: subText, colorClass: colorClass });
                             }
                         }
                     });
@@ -1405,4 +1411,3 @@
     </script>
 </body>
 </html>
-```[cite: 8]

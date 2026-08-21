@@ -80,7 +80,7 @@
         }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800">
+<body class="bg-slate-50 text-slate-800" data-source="1">
 
     <!-- パスワード認証モーダル -->
     <div id="auth-modal" class="fixed inset-0 bg-slate-900/80 z-50 flex items-center justify-center p-4">
@@ -609,7 +609,7 @@
                         }
                     });
                     (s.makeupReservations || []).forEach(r => {
-                        if (!r.completed && r.date === dObj.dashDateStr) {
+                        if (r.date === dObj.dashDateStr) {
                             const attKey = `makeup_${s.id}_${r.date}_${r.time}`;
                             if (attendanceMap[attKey] !== '無' && attendanceMap[attKey] !== '欠席') {
                                 timeSet.add(r.time);
@@ -679,7 +679,7 @@
                     });
 
                     (s.makeupReservations || []).forEach(r => {
-                        if (!r.completed && r.date === dObj.dashDateStr) {
+                        if (r.date === dObj.dashDateStr) {
                             const attKey = `makeup_${s.id}_${r.date}_${r.time}`;
                             if (attendanceMap[attKey] !== '無' && attendanceMap[attKey] !== '欠席') {
                                 let origSub = r.subject || "算数";
@@ -968,7 +968,7 @@
                 });
 
                 const allAbsences = [...regularAbsences, ...summerAbsences];
-                const activeReservations = (s.makeupReservations || []).filter(r => !r.completed);
+                const activeReservations = s.makeupReservations || [];
                 
                 const remaining = allAbsences.filter(k => !activeReservations.some(r => r.absKey === k)).length;
 
@@ -993,7 +993,7 @@
                     timeGroups[tKey].events.push({name: s.name, id: s.id, time: tKey, sub: sc.sub, attKey: attKey, status: (s.attendance || {})[attKey]}); 
                 });
 
-                (s.makeupReservations || []).filter(r => !r.completed && r.date === todayStr).forEach(r => {
+                (s.makeupReservations || []).filter(r => r.date === todayStr).forEach(r => {
                     let tKey = r.time;
                     if (!timeGroups[tKey]) timeGroups[tKey] = { title: tKey.replace(/[①②③④⑤⑥⑦⑧⑨⑩]/g, '') + "の予定", events: [], timeVal: getTimeKey(tKey) };
                     
@@ -1016,12 +1016,7 @@
                     });
                 });
                 
-                const displayableAbsences = allAbsences.filter(k => {
-                    const res = activeReservations.find(r => r.absKey === k);
-                    if (!res) return true;
-                    const makeupAttKey = `makeup_${s.id}_${res.date}_${res.time}`;
-                    return (s.attendance || {})[makeupAttKey] !== '出席';
-                });
+                const displayableAbsences = allAbsences.filter(k => !activeReservations.some(r => r.absKey === k));
 
                 const displayableReservations = activeReservations.filter(r => {
                     const makeupAttKey = `makeup_${s.id}_${r.date}_${r.time}`;
@@ -1093,7 +1088,6 @@
                 };
 
                 if (displayableAbsences.length > 0 || displayableReservations.length > 0) {
-                    // 新タブ (振替)
                     let newGroupDiv = document.createElement('div');
                     newGroupDiv.className = "makeup-group";
                     let isNewMakeupOpen = !!openNewMakeupIds[s.id];
@@ -1150,6 +1144,7 @@
                     return aIsOL ? 1 : -1;
                 });
 
+                timeGroups[k].events.events = timeGroups[k].events || [];
                 timeGroups[k].events.forEach(ev => {
                     let rawName = ev.name.replace(/\s*\(体験\)$/, '');
                     let suffix = ev.name.includes('(体験)') ? ' (体験)' : '';
@@ -1209,7 +1204,6 @@
 
                     if (status === '取消') {
                         delete targetStudent.attendance[attKey];
-                        targetStudent.makeupReservations = targetStudent.makeupReservations.filter(r => r.absKey !== attKey);
                     } else if (status === '出席') { 
                         targetStudent.attendance[attKey] = '出席'; 
                         if (attKey.startsWith('makeup_')) {
@@ -1222,21 +1216,9 @@
                             if (targetAbsKey) {
                                 targetStudent.attendance[targetAbsKey] = '無';
                             }
-                            targetStudent.makeupReservations = targetStudent.makeupReservations.map(r => 
-                                (r.absKey === targetAbsKey || (r.date === resDate && r.time === resTime)) ? { ...r, completed: true } : r
-                            );
                         }
                     } else {
                         targetStudent.attendance[attKey] = status;
-                        if (attKey.startsWith('makeup_') && status === '欠席') {
-                            const parts = attKey.replace(`makeup_${id}_`, '').split('_');
-                            const resDate = parts.slice(0, -1).join('_');
-                            const resTime = parts[parts.length - 1];
-                            targetStudent.makeupReservations = targetStudent.makeupReservations.map(r => (r.date === resDate && r.time === resTime) ? { ...r, completed: false } : r);
-                            if (absKey) {
-                                targetStudent.makeupReservations = targetStudent.makeupReservations.map(r => r.absKey === absKey ? { ...r, completed: false } : r);
-                            }
-                        }
                     }
                 }
             }
@@ -1250,9 +1232,6 @@
             
             if (status === '取消') {
                 delete attendance[attKey];
-                if (!isTrial) {
-                    reservations = reservations.filter(r => r.absKey !== attKey);
-                }
             } else if (status === '出席') { 
                 attendance[attKey] = '出席'; 
                 if (attKey.startsWith('makeup_')) {
@@ -1265,21 +1244,9 @@
                     if (targetAbsKey) {
                         attendance[targetAbsKey] = '無';
                     }
-                    reservations = reservations.map(r => 
-                        (r.absKey === targetAbsKey || (r.date === resDate && r.time === resTime)) ? { ...r, completed: true } : r
-                    );
                 }
             } else {
                 attendance[attKey] = status;
-                if (attKey.startsWith('makeup_') && status === '欠席') {
-                    const parts = attKey.replace(`makeup_${id}_`, '').split('_');
-                    const resDate = parts.slice(0, -1).join('_');
-                    const resTime = parts[parts.length - 1];
-                    reservations = reservations.map(r => (r.date === resDate && r.time === resTime) ? { ...r, completed: false } : r);
-                    if (absKey) {
-                        reservations = reservations.map(r => r.absKey === absKey ? { ...r, completed: false } : r);
-                    }
-                }
             }
             
             await updateDoc(ref, { attendance, ...(isTrial ? {} : { makeupReservations: reservations }) });
@@ -1316,7 +1283,7 @@
             const snap = await getDoc(ref); 
             let data = snap.data(); 
             let res = (data.makeupReservations || []).filter(r => r.absKey !== absKey); 
-            res.push({ absKey, date, time, completed: false, subject: subject }); 
+            res.push({ absKey, date, time, subject: subject }); 
             await updateDoc(ref, { makeupReservations: res }); 
             alert("予約完了しました"); 
             render(); 

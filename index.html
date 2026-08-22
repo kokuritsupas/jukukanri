@@ -23,6 +23,7 @@
         #nav5 { background: #eebefa !important; color: #4a5568; border-bottom-color: #d896ff; }
         #nav6 { background: #f1f3f5 !important; color: #4a5568; border-bottom-color: #ced4da; }
         #nav7 { background: #fff59d !important; color: #4a5568; border-bottom-color: #fdd835; }
+        #nav9 { background: #c3fae8 !important; color: #4a5568; border-bottom-color: #63e6be; }
         
         .nav-btn:not(.nav-active-tab) { background: #f8fafc !important; color: #64748b !important; border-bottom-color: transparent !important; }
         .btn-main { background-color: #3b82f6; color: white; padding: 16px; border-radius: 8px; font-weight: bold; width: 100%; }
@@ -80,7 +81,7 @@
         }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800" data-source="1">
+<body class="bg-slate-50 text-slate-800" data-source="6">
 
     <!-- パスワード認証モーダル -->
     <div id="auth-modal" class="fixed inset-0 bg-slate-900/80 z-50 flex items-center justify-center p-4">
@@ -108,6 +109,7 @@
                 <button id="nav5" class="nav-btn">詳細</button>
                 <button id="nav6" class="nav-btn">体験</button>
                 <button id="nav7" class="nav-btn">講習管理</button>
+                <button id="nav9" class="nav-btn">講師名簿</button>
             </nav>
         </div>
 
@@ -217,6 +219,25 @@
                 <div class="scrollTop-btn"><button onclick="window.scrollTo({top:0, behavior:'smooth'})"><svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"></polyline></svg><span>TOP</span></button></div>
                 <div id="summer-container" class="space-y-1"></div>
             </div>
+            <!-- 講師名簿タブ -->
+            <div id="tab9" class="tab-content space-y-4">
+                <div class="scrollTop-btn"><button onclick="window.scrollTo({top:0, behavior:'smooth'})"><svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"></polyline></svg><span>TOP</span></button></div>
+                <div class="p-3 bg-slate-100 rounded-lg border space-y-3">
+                    <h2 class="font-bold text-sm text-slate-700">講師登録・編集</h2>
+                    <input type="hidden" id="teacher-id">
+                    <input type="text" id="teacher-name" placeholder="氏名" class="input-styled">
+                    <input type="text" id="teacher-tel" placeholder="電話番号" class="input-styled">
+                    
+                    <label class="text-xs font-bold text-slate-600">担当曜日・コマ (複数設定可能)</label>
+                    <div id="teacher-schedule-container" class="space-y-2"></div>
+                    <button type="button" id="add-teacher-schedule" class="w-full text-blue-600 border-2 border-blue-600 py-2 rounded text-xs font-bold hover:bg-blue-50">+ 担当枠を追加</button>
+
+                    <button id="save-teacher-btn" class="btn-main !p-3">講師を保存する</button>
+                    <button id="clear-teacher-btn" class="w-full text-slate-500 py-1 text-xs underline">新規入力へ</button>
+                </div>
+                <div class="font-bold text-lg p-2 bg-slate-100 rounded-t">登録講師一覧</div>
+                <div id="teacher-list" class="space-y-2"></div>
+            </div>
         </div>
     </div>
 
@@ -238,7 +259,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
         import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, updateDoc, deleteDoc, addDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
         const db = getFirestore(initializeApp({ apiKey: "YOUR_API_KEY", projectId: "juku-kanri-system", storageBucket: "juku-kanri-system.firebasestorage.app", messagingSenderId: "525148833125", appId: "1:525148833125:web:36bee786e3545bd7908d8c" }));
-        let cachedData = []; let trialsData = []; let courseDates = { start: '', end: '', password: 'koji1516' };
+        let cachedData = []; let trialsData = []; let teachersData = []; let courseDates = { start: '', end: '', password: 'koji1516' };
         let openNewMakeupIds = {};
         let openSummerIds = {};
         
@@ -247,6 +268,26 @@
         const subjects = ["算数", "数学", "英語", "国語", "理科", "社会", "数OL", "英OL", "理OL", "数学OL", "英語OL", "理科OL"];
         const timeOptions = timeSlots.map(t => `<option>${t}</option>`).join('');
         const subjectOptions = subjects.map(sub => `<option>${sub}</option>`).join('');
+
+        // 講師の担当枠行を作成する関数
+        const createTeacherScheduleRow = (d="月", t="17:00～") => {
+            const div = document.createElement('div');
+            div.className = "teacher-schedule-row flex gap-2 items-center";
+            div.innerHTML = `
+                <select class="t-day border p-2 text-sm bg-white rounded flex-1">
+                    <option>月</option><option>火</option><option>水</option><option>木</option><option>金</option><option>土</option>
+                </select>
+                <select class="t-time border p-2 text-sm bg-white rounded flex-1">${timeOptions}</select>
+                <button type="button" onclick="this.parentElement.remove()" class="bg-red-500 text-white px-2 py-1 rounded text-xs font-bold">削除</button>
+            `;
+            div.querySelector('.t-day').value = d;
+            div.querySelector('.t-time').value = t;
+            return div;
+        };
+
+        document.getElementById('add-teacher-schedule').onclick = () => {
+            document.getElementById('teacher-schedule-container').appendChild(createTeacherScheduleRow());
+        };
 
         const famContainer = document.getElementById('fam-container');
         for(let i=1; i<=4; i++) {
@@ -380,6 +421,102 @@
             const body = document.getElementById('bulk-mail-body').value;
             const mailtoUrl = `mailto:?bcc=${encodeURIComponent(emails.join(','))}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
             window.location.href = mailtoUrl;
+        };
+
+        // 講師の保存処理
+        document.getElementById('save-teacher-btn').onclick = async () => {
+            const id = document.getElementById('teacher-id').value.trim();
+            const name = document.getElementById('teacher-name').value.trim();
+            const tel = document.getElementById('teacher-tel').value.trim();
+            const schedules = Array.from(document.querySelectorAll('.teacher-schedule-row')).map(row => ({
+                day: row.querySelector('.t-day').value,
+                time: row.querySelector('.t-time').value
+            }));
+
+            if(!name) {
+                alert("講師の氏名を入力してください");
+                return;
+            }
+
+            const teacherData = { name, tel, schedules };
+            if(id) {
+                await updateDoc(doc(db, "teachers", id), teacherData);
+            } else {
+                await addDoc(collection(db, "teachers"), teacherData);
+            }
+            alert("講師情報を保存しました");
+            document.getElementById('clear-teacher-btn').click();
+        };
+
+        document.getElementById('clear-teacher-btn').onclick = () => {
+            document.getElementById('teacher-id').value = "";
+            document.getElementById('teacher-name').value = "";
+            document.getElementById('teacher-tel').value = "";
+            document.getElementById('teacher-schedule-container').innerHTML = "";
+            document.getElementById('teacher-schedule-container').appendChild(createTeacherScheduleRow());
+        };
+
+        window.editTeacher = (id, name, tel, schedulesJSON) => {
+            document.getElementById('teacher-id').value = id;
+            document.getElementById('teacher-name').value = name;
+            document.getElementById('teacher-tel').value = tel;
+            const container = document.getElementById('teacher-schedule-container');
+            container.innerHTML = "";
+            let schedules = [];
+            try { schedules = JSON.parse(schedulesJSON); } catch(e) {}
+            if(!schedules || schedules.length === 0) {
+                container.appendChild(createTeacherScheduleRow());
+            } else {
+                schedules.forEach(sc => container.appendChild(createTeacherScheduleRow(sc.day, sc.time)));
+            }
+        };
+
+        window.deleteTeacher = async (id) => {
+            if(!confirm("この講師データを削除しますか？")) return;
+            await deleteDoc(doc(db, "teachers", id));
+            alert("削除しました");
+        };
+
+        // 予定タブの時刻グループごとに講師を変更するためのUI表示用関数
+        window.toggleTeacherChangeUI = (btn, dateStr, timeKey) => {
+            let parent = btn.parentElement;
+            let existing = parent.querySelector('.teacher-change-container');
+            if (existing) {
+                existing.remove();
+                return;
+            }
+            document.querySelectorAll('.teacher-change-container').forEach(el => el.remove());
+
+            let optionsHtml = `<option value="">講師なし</option>` + teachersData.map(tch => `<option value="${tch.name}">${tch.name}</option>`).join('');
+            
+            const slotKey = `${dateStr}_${timeKey}`;
+            const currentTeacher = (courseDates.slotTeachers || {})[slotKey] || '';
+
+            let container = document.createElement('div');
+            container.className = "teacher-change-container flex items-center gap-1 mt-1";
+            container.innerHTML = `
+                <select class="border p-1 text-xs bg-white rounded teacher-select">${optionsHtml}</select>
+                <button onclick="applyTeacherChange('${dateStr}', '${timeKey}', this)" class="bg-emerald-600 text-white px-2 py-1 rounded text-xs font-bold">変更</button>
+            `;
+            container.querySelector('.teacher-select').value = currentTeacher;
+            parent.appendChild(container);
+        };
+
+        window.applyTeacherChange = async (dateStr, timeKey, btn) => {
+            const container = btn.parentElement;
+            const newTeacher = container.querySelector('.teacher-select').value;
+            
+            let slotTeachers = courseDates.slotTeachers || {};
+            const slotKey = `${dateStr}_${timeKey}`;
+            if (newTeacher) {
+                slotTeachers[slotKey] = newTeacher;
+            } else {
+                delete slotTeachers[slotKey];
+            }
+
+            await setDoc(doc(db, "system", "config"), { slotTeachers }, {merge:true});
+            alert("講師を変更しました");
+            render();
         };
 
         window.extractPersonalRange = () => {
@@ -901,8 +1038,9 @@
             const searchBox = document.getElementById('search-box'); 
             const rangeStudent = document.getElementById('range-student');
             const summerContainer = document.getElementById('summer-container');
+            const teacherList = document.getElementById('teacher-list');
             
-            studentList.innerHTML = ""; todayList.innerHTML = ""; trialList.innerHTML = ""; 
+            studentList.innerHTML = ""; todayList.innerHTML = ""; trialList.innerHTML = ""; teacherList.innerHTML = "";
             summerContainer.innerHTML = `
                 <div class="bg-slate-100 p-3 rounded-lg mb-4">
                     <h2 class="font-bold text-sm mb-2">講習期間設定</h2>
@@ -919,6 +1057,30 @@
             const currentSelectedRangeStudent = rangeStudent.value;
             rangeStudent.innerHTML = '<option value="">生徒を選択...</option>';
             
+            // 講師名簿一覧のレンダリング
+            teachersData.forEach(tch => {
+                let schedules = tch.schedules || [];
+                // 移行期間の互換性（旧データ単一項目対応）
+                if (schedules.length === 0 && tch.day && tch.time) {
+                    schedules = [{ day: tch.day, time: tch.time }];
+                }
+                const schedulesText = schedules.map(sc => `${sc.day}曜 ${sc.time}`).join(' / ') || '担当なし';
+                const schedulesJSON = JSON.stringify(schedules).replace(/"/g, '&quot;');
+
+                teacherList.innerHTML += `
+                    <div class="p-3 border rounded bg-white flex justify-between items-center text-sm">
+                        <div>
+                            <strong>${tch.name}</strong> (${tch.tel || 'TELなし'})<br>
+                            <span class="text-xs text-slate-500">担当: ${schedulesText}</span>
+                        </div>
+                        <div class="flex gap-1">
+                            <button onclick="editTeacher('${tch.id}', '${tch.name}', '${tch.tel || ''}', '${schedulesJSON}')" class="bg-blue-600 text-white px-2.5 py-1 rounded text-xs font-bold">編集</button>
+                            <button onclick="deleteTeacher('${tch.id}')" class="bg-red-500 text-white px-2.5 py-1 rounded text-xs font-bold">削除</button>
+                        </div>
+                    </div>
+                `;
+            });
+
             let timeGroups = {}; 
             
             cachedData.forEach((s, index) => { 
@@ -1135,7 +1297,25 @@
             }, 0);
 
             Object.keys(timeGroups).sort((a,b) => timeGroups[a].timeVal - timeGroups[b].timeVal).forEach(k => {
-                todayList.innerHTML += `<div class="font-bold text-slate-700 mt-6 mb-2 border-b border-slate-300" style="max-width: 600px; margin: 12px auto 4px auto;">${timeGroups[k].title}</div>`;
+                // 自動紐付け：本日の曜日と一致し、講師の複数担当枠に一致する講師を探す
+                const slotKey = `${todayStr}_${k}`;
+                let assignedTeacher = (courseDates.slotTeachers || {})[slotKey];
+                if (!assignedTeacher) {
+                    const matchTch = teachersData.find(tch => {
+                        let schedules = tch.schedules || [];
+                        if (schedules.length === 0 && tch.day && tch.time) schedules = [{ day: tch.day, time: tch.time }];
+                        return schedules.some(sc => sc.day === dayStr && sc.time === k);
+                    });
+                    if (matchTch) assignedTeacher = matchTch.name;
+                }
+                const teacherDisplayStr = assignedTeacher ? ` / 担当講師: ${assignedTeacher}` : '';
+
+                todayList.innerHTML += `
+                    <div class="font-bold text-slate-700 mt-6 mb-2 border-b border-slate-300 flex justify-between items-center" style="max-width: 600px; margin: 12px auto 4px auto;">
+                        <span>${timeGroups[k].title}${teacherDisplayStr}</span>
+                        <button onclick="toggleTeacherChangeUI(this, '${todayStr}', '${k}')" class="text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-300 px-2 py-0.5 rounded font-bold">講師変更</button>
+                    </div>
+                `;
                 
                 timeGroups[k].events.sort((a, b) => {
                     const aIsOL = a.sub.includes('OL');
@@ -1338,9 +1518,11 @@
         
         document.getElementById('save-trial').onclick = async () => { await addDoc(collection(db, "trials"), { name: document.getElementById('trial-name').value, grade: document.getElementById('trial-grade').value, sub: document.getElementById('trial-sub').value, date: document.getElementById('trial-date').value, time: document.getElementById('trial-time').value, registered: false }); alert("体験予約を保存しました"); };
         document.querySelectorAll('nav button').forEach((btn, i) => { btn.onclick = () => { document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active')); document.querySelectorAll('.nav-btn').forEach(n => n.classList.remove('nav-active-tab')); document.querySelectorAll('.tab-content')[i].classList.add('active'); btn.classList.add('nav-active-tab'); }; }); 
-        onSnapshot(doc(db, "system", "config"), (doc) => { if(doc.exists()){ courseDates = doc.data(); const cs = document.getElementById('course-start'); const ce = document.getElementById('course-end'); if(cs) cs.value = courseDates.start || ''; if(ce) ce.value = courseDates.end || ''; } });
+        onSnapshot(doc(db, "system", "config"), (doc) => { if(doc.exists()){ courseDates = doc.data(); const cs = document.getElementById('course-start'); const ce = document.getElementById('course-end'); if(cs) cs.value = courseDates.start || ''; if(ce) ce.value = courseDates.end || ''; render(); } });
         onSnapshot(collection(db, "students"), async (snap) => { cachedData = snap.docs.map(doc => ({id: doc.id, ...doc.data()})); render(); });
         onSnapshot(collection(db, "trials"), (snap) => { trialsData = snap.docs.map(doc => ({id: doc.id, ...doc.data()})); render(); });
+        onSnapshot(collection(db, "teachers"), (snap) => { teachersData = snap.docs.map(doc => ({id: doc.id, ...doc.data()})); render(); });
+
         document.getElementById('cancel-trial-convert').onclick = () => { if(!confirm('体験からの移行をキャンセルしますか？')) return; window.pendingTrialConversion = null; };
         document.getElementById('clear-btn').onclick = () => {
             document.getElementById('stu-id').value = "";
@@ -1374,6 +1556,8 @@
             const offset = today.getTimezoneOffset();
             const localDate = new Date(today.getTime() - (offset * 60 * 1000));
             document.getElementById('cal-today').value = localDate.toISOString().split('T')[0];
+            // 講師名簿初期行
+            document.getElementById('teacher-schedule-container').appendChild(createTeacherScheduleRow());
         });
     </script>
 </body>

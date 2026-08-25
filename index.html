@@ -826,7 +826,7 @@
                                     if (origSc) origSub = origSc.sub;
                                 }
                                 let subText = origSub + " 振替";
-                                let colorClass = "text-red-600 font-bold";
+                                let colorClass = "text-emerald-600 font-bold"; // 振替の表示色を緑色に変更
                                 if (subText.includes("OL")) {
                                     colorClass = "text-red-600 font-bold";
                                 }
@@ -1244,7 +1244,7 @@
                         const safeKey = prefix + s.id + '-' + k.replace(/[^a-zA-Z0-9-_]/g, '_');
 
                         containerEl.innerHTML += `<div class="makeup-row"><div class="makeup-orig">${displayOrigText}</div>` + 
-                        (res ? `<div class="makeup-inputs justify-center text-blue-600">${resDisplay}</div><button onclick="cancelMakeup('${s.id}','${k}')" class="cancel-btn">取消</button><button onclick="deleteMakeupReservation('${s.id}','${k}')" class="delete-makeup-btn">削除</button>` : 
+                        (res ? `<div class="makeup-inputs justify-center text-emerald-600">${resDisplay}</div><button onclick="cancelMakeup('${s.id}','${k}')" class="cancel-btn">取消</button><button onclick="deleteMakeupReservation('${s.id}','${k}')" class="delete-makeup-btn">削除</button>` : 
                         `<div class="makeup-inputs"><input type="date" id="d-${safeKey}" class="input-styled" style="padding:4px; min-height:auto;"><select id="t-${safeKey}">${timeOptions}</select><select id="sub-${safeKey}">${subjects.map(sub => `<option ${sub === defaultSub ? 'selected' : ''}>${sub}</option>`).join('')}</select></div><button onclick="bookMakeupCustom('${s.id}','${k}', ${isNewTab})" class="makeup-btn">予約</button><div></div>`) + `</div>`; 
                     });
                 };
@@ -1338,7 +1338,7 @@
 
                     let subHtml = ev.sub;
                     if (subHtml.includes(' 振替')) {
-                        subHtml = subHtml.replace(' 振替', '<br><span class="text-[11px] font-bold text-red-600">振替</span>');
+                        subHtml = subHtml.replace(' 振替', '<br><span class="text-[11px] font-bold text-emerald-600">振替</span>'); // 振替の表示色を緑色に変更
                     } else if (subHtml.includes(' 講習')) {
                         subHtml = subHtml.replace(' 講習', '<br><span class="text-[11px] font-bold text-blue-600">講習</span>');
                     } else {

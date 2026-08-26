@@ -855,14 +855,17 @@
                 }
             });
 
+            // 修正部分: 画面サイズに応じた幅（min-width）を動的に設定し、スマホ等の狭い画面では横スクロールで快適に閲覧できるように改善
+            const dynamicMinWidth = Math.max(1000, dateList.length * 110);
+
             let html = `
                 <div class="no-print flex justify-end gap-2 mb-2">
                     <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded font-bold text-xs">印刷</button>
                     <button onclick="downloadPDF()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded font-bold text-xs">PDF出力</button>
                     <button onclick="document.getElementById('range-result-area').innerHTML=''" class="bg-slate-300 hover:bg-slate-400 text-slate-800 px-2 py-1 rounded font-bold text-xs">閉じる</button>
                 </div>
-                <div id="pdf-container-area" class="w-full bg-white border rounded shadow-sm p-3 overflow-x-auto" style="width: 257mm; box-sizing: border-box; margin: 0 auto; display: flex; flex-direction: column;">
-                    <div>
+                <div id="pdf-container-area" class="w-full bg-white border rounded shadow-sm p-3 overflow-x-auto" style="width: 100%; box-sizing: border-box; margin: 0 auto; display: flex; flex-direction: column;">
+                    <div style="min-width: ${dynamicMinWidth}px;">
                         <div class="font-bold text-sm mb-2 text-slate-800 border-b pb-1.5 flex justify-between items-center">
                             <span>週間コマ一覧表 (10:00～20:30 全授業表示) : ${startDateStr} ～ ${endDateStr}</span>
                             <span class="text-xs text-slate-500 font-normal">塾管理システム</span>

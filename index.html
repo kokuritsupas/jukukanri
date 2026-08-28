@@ -303,7 +303,32 @@
             const colors = {'17:00': '#fee2e2', '18:10': '#fef3c7', '19:20': '#dcfce7', '20:30': '#dbeafe', '13:40': '#f1f5f9', '14:50': '#f3e8ff', '16:00': '#ffe4e6', '17:30': '#fef9c3', '18:40': '#ccfbf1', '19:50': '#e0f2fe'}; 
             return colors[cleanT.substring(0, 5)] || '#fff59d'; 
         };
-        const createRow = (d="月", t="17:00～", s="算数") => { const div = document.createElement('div'); div.className = "schedule-row"; div.style.backgroundColor = getColor(t); div.style.padding = "5px"; div.style.borderRadius = "4px"; div.style.marginBottom = "5px"; div.innerHTML = `<select class="day border p-2 text-sm bg-white"><option>月</option><option>火</option><option>水</option><option>木</option><option>金</option><option>土</option></select><select class="time border p-2 text-sm bg-white" onchange="this.parentElement.style.backgroundColor = getColor(this.value)">${timeOptions}</select><select class="sub border p-2 text-sm bg-white">${subjectOptions}</select>`; div.querySelector('.day').value = d; div.querySelector('.time').value = t; div.querySelector('.sub').value = s; return div; };
+        
+        // 授業枠行を作成する関数（「削除」のほかに、入力内容の初期化・取り消しを行う「取消」ボタンを実装）
+        const createRow = (d="月", t="17:00～", s="算数", startDate="") => { 
+            const div = document.createElement('div'); 
+            div.className = "schedule-row flex flex-col md:flex-row gap-2 items-center"; 
+            div.style.backgroundColor = getColor(t); 
+            div.style.padding = "8px"; 
+            div.style.borderRadius = "6px"; 
+            div.style.marginBottom = "5px"; 
+            div.innerHTML = `
+                <div class="flex gap-2 w-full">
+                    <select class="day border p-2 text-sm bg-white flex-1"><option>月</option><option>火</option><option>水</option><option>木</option><option>金</option><option>土</option></select>
+                    <select class="time border p-2 text-sm bg-white flex-1" onchange="this.closest('.schedule-row').style.backgroundColor = getColor(this.value)">${timeOptions}</select>
+                    <select class="sub border p-2 text-sm bg-white flex-1">${subjectOptions}</select>
+                </div>
+                <div class="flex gap-2 w-full items-center">
+                    <input type="date" class="start-date input-styled !p-1 text-xs bg-white" title="予定に表示させる開始日" value="${startDate}">
+                    <button type="button" onclick="const r=this.closest('.schedule-row'); r.querySelector('.day').value='月'; r.querySelector('.time').value='17:00～'; r.querySelector('.sub').value='算数'; r.querySelector('.start-date').value=''; r.style.backgroundColor=getColor('17:00～');" class="bg-amber-500 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap">取消</button>
+                    <button type="button" onclick="this.closest('.schedule-row').remove()" class="bg-red-500 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap">削除</button>
+                </div>
+            `; 
+            div.querySelector('.day').value = d; 
+            div.querySelector('.time').value = t; 
+            div.querySelector('.sub').value = s; 
+            return div; 
+        };
         
         window.calcGrade = (birthDate) => {
             if (!birthDate) return "-";
@@ -561,6 +586,8 @@
                 const dayOfWeekStr = dayOfWeekNames[curr.getDay()];
 
                 (s.schedules || []).forEach(sc => {
+                    if (sc.startDate && dashDateStr < sc.startDate) return;
+
                     if (sc.day === dayOfWeekStr) {
                         const attKey = `${dashDateStr}_${sc.time}`;
                         const status = attendanceMap[attKey];
@@ -728,6 +755,7 @@
                 const timeChanges = s.timeChanges || {};
                 dateList.forEach(dObj => {
                     (s.schedules || []).forEach(sc => {
+                        if (sc.startDate && dObj.dashDateStr < sc.startDate) return;
                         if (sc.day === dObj.dayOfWeek) {
                             const origAttKey = `${dObj.dashDateStr}_${sc.time}`;
                             const attKey = origAttKey;
@@ -786,6 +814,7 @@
 
                 dateList.forEach(dObj => {
                     (s.schedules || []).forEach(sc => {
+                        if (sc.startDate && dObj.dashDateStr < sc.startDate) return;
                         if (sc.day === dObj.dayOfWeek) {
                             const origAttKey = `${dObj.dashDateStr}_${sc.time}`;
                             const attKey = origAttKey;
@@ -826,7 +855,7 @@
                                     if (origSc) origSub = origSc.sub;
                                 }
                                 let subText = origSub + " 振替";
-                                let colorClass = "text-emerald-600 font-bold"; // 振替の表示色を緑色に変更
+                                let colorClass = "text-emerald-600 font-bold";
                                 if (subText.includes("OL")) {
                                     colorClass = "text-red-600 font-bold";
                                 }
@@ -855,7 +884,6 @@
                 }
             });
 
-            // 修正部分: 画面サイズに応じた幅（min-width）を動的に設定し、スマホ等の狭い画面では横スクロールで快適に閲覧できるように改善
             const dynamicMinWidth = Math.max(1000, dateList.length * 110);
 
             let html = `
@@ -1060,10 +1088,8 @@
             const currentSelectedRangeStudent = rangeStudent.value;
             rangeStudent.innerHTML = '<option value="">生徒を選択...</option>';
             
-            // 講師名簿一覧のレンダリング
             teachersData.forEach(tch => {
                 let schedules = tch.schedules || [];
-                // 移行期間の互換性（旧データ単一項目対応）
                 if (schedules.length === 0 && tch.day && tch.time) {
                     schedules = [{ day: tch.day, time: tch.time }];
                 }
@@ -1137,7 +1163,7 @@
                 
                 const remaining = allAbsences.filter(k => !activeReservations.some(r => r.absKey === k)).length;
 
-                let schedHtml = (s.schedules || []).map(sc => `<span class="text-[10px] px-2 py-0.5 rounded whitespace-nowrap inline-block" style="background:${getColor(sc.time)}">${sc.time.replace(/[①②③④⑤⑥⑦⑧⑨⑩]/g, '')}:${sc.sub}</span>`).join('');
+                let schedHtml = (s.schedules || []).map(sc => `<span class="text-[10px] px-2 py-0.5 rounded whitespace-nowrap inline-block" style="background:${getColor(sc.time)}">${sc.time.replace(/[①②③④⑤⑥⑦⑧⑨⑩]/g, '')}:${sc.sub}${sc.startDate ? `(${sc.startDate}～)` : ''}</span>`).join('');
                 
                 let rawListName = s.name || '';
                 let namePartsList = rawListName.trim().split(/[\s ]+/);
@@ -1150,7 +1176,10 @@
 
                 studentList.innerHTML += `<div class="student-row"><span class="font-bold text-slate-400 text-sm">${index + 1}.</span><div class="student-main-info"><span onclick="window.editMode('${s.id}')" class="cursor-pointer font-bold text-blue-600 underline">${nameHtmlList}</span><span class="text-xs text-slate-500">${s.grade || ''}</span></div><span class="rem-count ${remaining === 0 ? 'rem-zero' : 'rem-positive'}">振替:${remaining}</span><div class="student-schedules">${schedHtml}</div></div>`;
                 
-                (s.schedules || []).filter(sc => sc.day === dayStr).forEach(sc => { 
+                (s.schedules || []).forEach(sc => { 
+                    if (sc.startDate && todayStr < sc.startDate) return;
+                    if (sc.day !== dayStr) return;
+
                     let origAttKey = `${todayStr}_${sc.time}`;
                     let tKey = (s.timeChanges && s.timeChanges[origAttKey]) ? s.timeChanges[origAttKey] : sc.time;
                     let attKey = origAttKey;
@@ -1300,7 +1329,6 @@
             }, 0);
 
             Object.keys(timeGroups).sort((a,b) => timeGroups[a].timeVal - timeGroups[b].timeVal).forEach(k => {
-                // 自動紐付け：本日の曜日と一致し、講師の複数担当枠に一致する講師を探す
                 const slotKey = `${todayStr}_${k}`;
                 let assignedTeacher = (courseDates.slotTeachers || {})[slotKey];
                 if (!assignedTeacher) {
@@ -1341,7 +1369,7 @@
 
                     let subHtml = ev.sub;
                     if (subHtml.includes(' 振替')) {
-                        subHtml = subHtml.replace(' 振替', '<br><span class="text-[11px] font-bold text-emerald-600">振替</span>'); // 振替の表示色を緑色に変更
+                        subHtml = subHtml.replace(' 振替', '<br><span class="text-[11px] font-bold text-emerald-600">振替</span>');
                     } else if (subHtml.includes(' 講習')) {
                         subHtml = subHtml.replace(' 講習', '<br><span class="text-[11px] font-bold text-blue-600">講習</span>');
                     } else {
@@ -1486,7 +1514,7 @@
         
         window.editMode = async (id) => { 
             window.editingId = id;
-            const snap = await getDoc(doc(db, "students", id)); const s = snap.data(); document.getElementById('stu-id').value = id; document.getElementById('stu-name').value = s.name; document.getElementById('stu-kana').value = s.kana || ""; document.getElementById('stu-birth').value = s.birth || ""; document.getElementById('grade-result').innerText = s.grade || "-"; document.getElementById('zip').value = s.zip || ""; document.getElementById('addr').value = s.addr || ""; document.getElementById('email').value = s.email || ""; document.getElementById('tel1').value = s.tel1 || ""; document.getElementById('tel2').value = s.tel2 || ""; for(let i=1; i<=4; i++) { document.getElementById('fam-name'+i).value = s['famName'+i] || ""; document.getElementById('fam-kana'+i).value = s['famKana'+i] || ""; document.getElementById('fam-rel'+i).value = s['famRel'+i] || ""; document.getElementById('fam-birth'+i).value = s['famBirth'+i] || ""; document.getElementById('fam-grade'+i).innerText = window.calcGrade(s['famBirth'+i] || ""); document.getElementById('fam-work'+i).value = s['famWork'+i] || ""; } document.getElementById('delete-btn').classList.remove('hidden'); const container = document.getElementById('schedule-container'); container.innerHTML = ""; (s.schedules || []).forEach(sc => container.appendChild(createRow(sc.day, sc.time, sc.sub))); document.querySelectorAll('nav button')[0].click(); 
+            const snap = await getDoc(doc(db, "students", id)); const s = snap.data(); document.getElementById('stu-id').value = id; document.getElementById('stu-name').value = s.name; document.getElementById('stu-kana').value = s.kana || ""; document.getElementById('stu-birth').value = s.birth || ""; document.getElementById('grade-result').innerText = s.grade || "-"; document.getElementById('zip').value = s.zip || ""; document.getElementById('addr').value = s.addr || ""; document.getElementById('email').value = s.email || ""; document.getElementById('tel1').value = s.tel1 || ""; document.getElementById('tel2').value = s.tel2 || ""; for(let i=1; i<=4; i++) { document.getElementById('fam-name'+i).value = s['famName'+i] || ""; document.getElementById('fam-kana'+i).value = s['famKana'+i] || ""; document.getElementById('fam-rel'+i).value = s['famRel'+i] || ""; document.getElementById('fam-birth'+i).value = s['famBirth'+i] || ""; document.getElementById('fam-grade'+i).innerText = window.calcGrade(s['famBirth'+i] || ""); document.getElementById('fam-work'+i).value = s['famWork'+i] || ""; } document.getElementById('delete-btn').classList.remove('hidden'); const container = document.getElementById('schedule-container'); container.innerHTML = ""; (s.schedules || []).forEach(sc => container.appendChild(createRow(sc.day, sc.time, sc.sub, sc.startDate || ""))); document.querySelectorAll('nav button')[0].click(); 
         }; 
         
         document.getElementById('add-schedule').onclick = () => document.getElementById('schedule-container').appendChild(createRow());
@@ -1496,7 +1524,14 @@
             const newId = document.getElementById('stu-id').value.trim(); 
             if(!newId) return alert("IDを入力してください"); 
             const oldId = window.editingId;
-            const schedules = Array.from(document.querySelectorAll('.schedule-row')).map(row => ({ day: row.querySelector('.day').value, time: row.querySelector('.time').value, sub: row.querySelector('.sub').value })); 
+            
+            const schedules = Array.from(document.querySelectorAll('.schedule-row')).map(row => ({ 
+                day: row.querySelector('.day').value, 
+                time: row.querySelector('.time').value, 
+                sub: row.querySelector('.sub').value,
+                startDate: row.querySelector('.start-date').value
+            })); 
+
             let famData = {}; 
             for(let i=1; i<=4; i++) { 
                 famData['famName'+i] = document.getElementById('fam-name'+i).value; 
@@ -1559,7 +1594,6 @@
             const offset = today.getTimezoneOffset();
             const localDate = new Date(today.getTime() - (offset * 60 * 1000));
             document.getElementById('cal-today').value = localDate.toISOString().split('T')[0];
-            // 講師名簿初期行
             document.getElementById('teacher-schedule-container').appendChild(createTeacherScheduleRow());
         });
     </script>

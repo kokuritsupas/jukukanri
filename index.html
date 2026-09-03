@@ -653,18 +653,20 @@
                 pages.push(events.slice(i, i + 20));
             }
 
+            // 週間コマ一覧表と同様にoverflow-x-autoとmin-widthを付与してスマホ等でも横スクロールできるように修正
             let html = `
                 <div class="no-print flex justify-end gap-2 mb-2">
                     <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded font-bold text-xs">印刷</button>
                     <button onclick="downloadPDF()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded font-bold text-xs">PDF出力</button>
                     <button onclick="document.getElementById('range-result-area').innerHTML=''" class="bg-slate-300 hover:bg-slate-400 text-slate-800 px-2 py-1 rounded font-bold text-xs">閉じる</button>
                 </div>
-                <div id="pdf-container-area">
+                <div id="pdf-container-area" class="w-full bg-white border rounded shadow-sm p-3 overflow-x-auto" style="width: 100%; box-sizing: border-box; margin: 0 auto; display: flex; flex-direction: column;">
+                    <div style="min-width: 600px;">
             `;
 
             pages.forEach((pageEvents, pageIndex) => {
                 html += `
-                    <div class='pdf-target-page bg-white border rounded shadow-sm overflow-hidden text-xs p-6' style="box-sizing: border-box; width: 210mm; height: 297mm; margin: 0 auto; background: white; display: flex; flex-direction: column; justify-content: space-between; page-break-after: always;">
+                    <div class='pdf-target-page bg-white border rounded shadow-sm overflow-hidden text-xs p-6 mb-4' style="box-sizing: border-box; width: 100%; max-width: 210mm; margin: 0 auto 16px auto; background: white; display: flex; flex-direction: column; justify-content: space-between;">
                         <div>
                             <div class='pb-3 mb-4 border-b-2 border-slate-800 font-bold text-slate-800 flex justify-between items-center text-sm'>
                                 <span>${s.name}さんのスケジュール一覧 (${startDateStr} ～ ${endDateStr})</span>
@@ -706,7 +708,7 @@
                 `;
             });
 
-            html += `</div>`;
+            html += `</div></div>`;
             resultArea.innerHTML = html;
         };
 

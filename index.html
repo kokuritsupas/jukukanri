@@ -262,6 +262,7 @@
         let cachedData = []; let trialsData = []; let teachersData = []; let courseDates = { start: '', end: '', password: 'koji1516' };
         let openNewMakeupIds = {};
         let openSummerIds = {};
+        let openTeacherCountsIds = {};
         
         const timeSlots = ["17:00～", "18:10～", "19:20～", "20:30～", "13:40～", "14:50～", "16:00～", "17:30～", "18:40～", "19:50～", "10:00～", "11:10～", "13:00～", "14:10～", "15:20～"];
         const summerTimeSlots = ["10:00～", "11:10～", "13:00～", "14:10～", "15:20～", "17:00～", "18:10～", "19:20～", "20:30～"];
@@ -502,7 +503,7 @@
             alert("削除しました");
         };
 
-        // 予定タブの時刻グループごとに講師を変更するためのUI表示用関数
+        // 予定タブの時刻グループごとに講師を変更するためのUI表示用関数（「削除」選択肢を追加）
         window.toggleTeacherChangeUI = (btn, dateStr, timeKey) => {
             let parent = btn.parentElement;
             let existing = parent.querySelector('.teacher-change-container');
@@ -512,7 +513,8 @@
             }
             document.querySelectorAll('.teacher-change-container').forEach(el => el.remove());
 
-            let optionsHtml = `<option value="">講師なし</option>` + teachersData.map(tch => `<option value="${tch.name}">${tch.name}</option>`).join('');
+            // 講師変更用プルダウンに「削除」を追加（値として特殊文字列 "__DELETE__" を指定）
+            let optionsHtml = `<option value="">講師なし</option><option value="__DELETE__">-- 削除 --</option>` + teachersData.map(tch => `<option value="${tch.name}">${tch.name}</option>`).join('');
             
             const slotKey = `${dateStr}_${timeKey}`;
             const currentTeacher = (courseDates.slotTeachers || {})[slotKey] || '';
@@ -533,7 +535,11 @@
             
             let slotTeachers = courseDates.slotTeachers || {};
             const slotKey = `${dateStr}_${timeKey}`;
-            if (newTeacher) {
+            
+            // 「削除」が選ばれた場合は、強制的に「講師なし（空文字 または 判定用キー）」として保存・削除する
+            if (newTeacher === '__DELETE__') {
+                slotTeachers[slotKey] = "";
+            } else if (newTeacher) {
                 slotTeachers[slotKey] = newTeacher;
             } else {
                 delete slotTeachers[slotKey];
@@ -542,6 +548,120 @@
             await setDoc(doc(db, "system", "config"), { slotTeachers }, {merge:true});
             alert("講師を変更しました");
             render();
+        };
+
+        // 月ごとの講師コマ回数計算関数
+        window.calculateTeacherCounts = (teacherName) => {
+            const startDate = new Date('2026-01-01');
+            const endDate = new Date('2026-12-31');
+            let monthlyCounts = {};
+            let curr = new Date(startDate);
+            const dayOfWeekNames = ["日", "月", "火", "水", "木", "金", "土"];
+
+            while (curr <= endDate) {
+                const yyyy = curr.getFullYear();
+                const mm = String(curr.getMonth() + 1).padStart(2, '0');
+                const dd = String(curr.getDate()).padStart(2, '0');
+                const dashDateStr = `${yyyy}-${mm}-${dd}`;
+                const dayStr = dayOfWeekNames[curr.getDay()];
+                const monthKey = `${yyyy}年 ${parseInt(mm)}月`;
+
+                let timeSlotsOnThisDay = new Set();
+
+                cachedData.forEach(s => {
+                    const attendanceMap = s.attendance || {};
+                    const timeChanges = s.timeChanges || {};
+
+                    (s.schedules || []).forEach(sc => {
+                        if (sc.startDate && dashDateStr < sc.startDate) return;
+                        if (sc.day === dayStr) {
+                            const origAttKey = `${dashDateStr}_${sc.time}`;
+                            if (attendanceMap[origAttKey] !== '無' && attendanceMap[origAttKey] !== '欠席') {
+                                const effectiveTime = timeChanges[origAttKey] ? timeChanges[origAttKey] : sc.time;
+                                timeSlotsOnThisDay.add(effectiveTime);
+                            }
+                        }
+                    });
+
+                    (s.summerSessions || []).forEach(sess => {
+                        if (sess.date === dashDateStr) {
+                            const attKey = `sm_${sess.date}_${sess.time}`;
+                            if (attendanceMap[attKey] !== '無' && attendanceMap[attKey] !== '欠席') {
+                                timeSlotsOnThisDay.add(sess.time);
+                            }
+                        }
+                    });
+
+                    (s.makeupReservations || []).forEach(r => {
+                        if (r.date === dashDateStr) {
+                            const attKey = `makeup_${s.id}_${r.date}_${r.time}`;
+                            if (attendanceMap[attKey] !== '無' && attendanceMap[attKey] !== '欠席') {
+                                timeSlotsOnThisDay.add(r.time);
+                            }
+                        }
+                    });
+                });
+
+                trialsData.forEach(t => {
+                    if (!t.registered && t.date === dashDateStr) {
+                        const attKey = `trial_${t.id}`;
+                        const attendanceMap = t.attendance || {};
+                        if (attendanceMap[attKey] !== '無' && attendanceMap[attKey] !== '欠席') {
+                            if (t.time) timeSlotsOnThisDay.add(t.time);
+                        }
+                    }
+                });
+
+                timeSlotsOnThisDay.forEach(tKey => {
+                    const slotKey = `${dashDateStr}_${tKey}`;
+                    let assignedTeacher = undefined;
+                    
+                    if (courseDates.slotTeachers && (slotKey in courseDates.slotTeachers)) {
+                        assignedTeacher = courseDates.slotTeachers[slotKey];
+                    } else {
+                        const matchTch = teachersData.find(tch => {
+                            let schedules = tch.schedules || [];
+                            if (schedules.length === 0 && tch.day && tch.time) schedules = [{ day: tch.day, time: tch.time }];
+                            return schedules.some(sc => sc.day === dayStr && sc.time === tKey);
+                        });
+                        if (matchTch) assignedTeacher = matchTch.name;
+                    }
+
+                    if (assignedTeacher === teacherName) {
+                        monthlyCounts[monthKey] = (monthlyCounts[monthKey] || 0) + 1;
+                    }
+                });
+
+                curr.setDate(curr.getDate() + 1);
+            }
+
+            return monthlyCounts;
+        };
+
+        window.toggleTeacherCounts = (id, name) => {
+            openTeacherCountsIds[id] = !openTeacherCountsIds[id];
+            const container = document.getElementById(`teacher-counts-${id}`);
+            if (!container) return;
+
+            if (openTeacherCountsIds[id]) {
+                container.classList.remove('hidden');
+                const counts = window.calculateTeacherCounts(name);
+                const sortedMonths = Object.keys(counts).sort();
+
+                if (sortedMonths.length === 0) {
+                    container.innerHTML = `<div class="text-slate-500">該当するコマはありません。</div>`;
+                    return;
+                }
+
+                let html = `<div class="font-bold text-slate-700 mb-1">${name}先生の月別担当コマ数</div><div class="grid grid-cols-2 sm:grid-cols-3 gap-2">`;
+                sortedMonths.forEach(m => {
+                    html += `<div class="bg-white p-1.5 border rounded flex justify-between items-center"><span>${m}</span><span class="font-bold text-blue-600">${counts[m]}コマ</span></div>`;
+                });
+                html += `</div>`;
+                container.innerHTML = html;
+            } else {
+                container.classList.add('hidden');
+            }
         };
 
         window.extractPersonalRange = () => {
@@ -653,7 +773,6 @@
                 pages.push(events.slice(i, i + 20));
             }
 
-            // 週間コマ一覧表と同様にoverflow-x-autoとmin-widthを付与してスマホ等でも横スクロールできるように修正
             let html = `
                 <div class="no-print flex justify-end gap-2 mb-2">
                     <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded font-bold text-xs">印刷</button>
@@ -666,7 +785,7 @@
 
             pages.forEach((pageEvents, pageIndex) => {
                 html += `
-                    <div class='pdf-target-page bg-white border rounded shadow-sm overflow-hidden text-xs p-6 mb-4' style="box-sizing: border-box; width: 100%; max-width: 210mm; margin: 0 auto 16px auto; background: white; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div class='pdf-target-page bg-white border rounded shadow-sm overflow-hidden text-xs p-6 mb-4' style="box-sizing: border-box; width: 100%; max-width: 210mm; margin: 0 auto 16mm auto; background: white; display: flex; flex-direction: column; justify-content: space-between;">
                         <div>
                             <div class='pb-3 mb-4 border-b-2 border-slate-800 font-bold text-slate-800 flex justify-between items-center text-sm'>
                                 <span>${s.name}さんのスケジュール一覧 (${startDateStr} ～ ${endDateStr})</span>
@@ -1097,19 +1216,45 @@
                 }
                 const schedulesText = schedules.map(sc => `${sc.day}曜 ${sc.time}`).join(' / ') || '担当なし';
                 const schedulesJSON = JSON.stringify(schedules).replace(/"/g, '&quot;');
+                const isOpenCounts = !!openTeacherCountsIds[tch.id];
 
                 teacherList.innerHTML += `
-                    <div class="p-3 border rounded bg-white flex justify-between items-center text-sm">
-                        <div>
-                            <strong>${tch.name}</strong> (${tch.tel || 'TELなし'})<br>
-                            <span class="text-xs text-slate-500">担当: ${schedulesText}</span>
+                    <div class="p-3 border rounded bg-white text-sm space-y-2">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <strong>${tch.name}</strong> (${tch.tel || 'TELなし'})<br>
+                                <span class="text-xs text-slate-500">担当: ${schedulesText}</span>
+                            </div>
+                            <div class="flex gap-1 flex-wrap justify-end">
+                                <button onclick="toggleTeacherCounts('${tch.id}', '${tch.name}')" class="bg-emerald-600 text-white px-2.5 py-1 rounded text-xs font-bold">月別コマ数</button>
+                                <button onclick="editTeacher('${tch.id}', '${tch.name}', '${tch.tel || ''}', '${schedulesJSON}')" class="bg-blue-600 text-white px-2.5 py-1 rounded text-xs font-bold">編集</button>
+                                <button onclick="deleteTeacher('${tch.id}')" class="bg-red-500 text-white px-2.5 py-1 rounded text-xs font-bold">削除</button>
+                            </div>
                         </div>
-                        <div class="flex gap-1">
-                            <button onclick="editTeacher('${tch.id}', '${tch.name}', '${tch.tel || ''}', '${schedulesJSON}')" class="bg-blue-600 text-white px-2.5 py-1 rounded text-xs font-bold">編集</button>
-                            <button onclick="deleteTeacher('${tch.id}')" class="bg-red-500 text-white px-2.5 py-1 rounded text-xs font-bold">削除</button>
-                        </div>
+                        <div id="teacher-counts-${tch.id}" class="${isOpenCounts ? '' : 'hidden'} pt-2 border-t text-xs bg-slate-50 p-2 rounded"></div>
                     </div>
                 `;
+                
+                // 再描画時にもし開いていた場合は自動的に内容を再構築する
+                if (isOpenCounts) {
+                    setTimeout(() => {
+                        const countsContainer = document.getElementById(`teacher-counts-${tch.id}`);
+                        if (countsContainer) {
+                            const counts = window.calculateTeacherCounts(tch.name);
+                            const sortedMonths = Object.keys(counts).sort();
+                            if (sortedMonths.length === 0) {
+                                countsContainer.innerHTML = `<div class="text-slate-500">該当するコマはありません。</div>`;
+                            } else {
+                                let html = `<div class="font-bold text-slate-700 mb-1">${tch.name}先生の月別担当コマ数</div><div class="grid grid-cols-2 sm:grid-cols-3 gap-2">`;
+                                sortedMonths.forEach(m => {
+                                    html += `<div class="bg-white p-1.5 border rounded flex justify-between items-center"><span>${m}</span><span class="font-bold text-blue-600">${counts[m]}コマ</span></div>`;
+                                });
+                                html += `</div>`;
+                                countsContainer.innerHTML = html;
+                            }
+                        }
+                    }, 0);
+                }
             });
 
             let timeGroups = {}; 
@@ -1332,8 +1477,12 @@
 
             Object.keys(timeGroups).sort((a,b) => timeGroups[a].timeVal - timeGroups[b].timeVal).forEach(k => {
                 const slotKey = `${todayStr}_${k}`;
-                let assignedTeacher = (courseDates.slotTeachers || {})[slotKey];
-                if (!assignedTeacher) {
+                let assignedTeacher = undefined;
+                
+                // slotTeachersに値（空文字含む）が存在する場合はそれを優先、存在しない場合はデフォルトの講師を検索
+                if (courseDates.slotTeachers && (slotKey in courseDates.slotTeachers)) {
+                    assignedTeacher = courseDates.slotTeachers[slotKey];
+                } else {
                     const matchTch = teachersData.find(tch => {
                         let schedules = tch.schedules || [];
                         if (schedules.length === 0 && tch.day && tch.time) schedules = [{ day: tch.day, time: tch.time }];
@@ -1341,6 +1490,8 @@
                     });
                     if (matchTch) assignedTeacher = matchTch.name;
                 }
+
+                // assignedTeacherが空文字（削除された状態）の場合は表示を行わない
                 const teacherDisplayStr = assignedTeacher ? ` / 担当講師: ${assignedTeacher}` : '';
 
                 todayList.innerHTML += `

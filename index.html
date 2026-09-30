@@ -259,11 +259,21 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
         import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, updateDoc, deleteDoc, addDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
         const db = getFirestore(initializeApp({ apiKey: "YOUR_API_KEY", projectId: "juku-kanri-system", storageBucket: "juku-kanri-system.firebasestorage.app", messagingSenderId: "525148833125", appId: "1:525148833125:web:36bee786e3545bd7908d8c" }));
-        let cachedData = []; let trialsData = []; let teachersData = []; let courseDates = { start: '', end: '', password: 'koji1516' };
-        let openNewMakeupIds = {};
-        let openSummerIds = {};
-        let openTeacherCountsIds = {};
-        let teacherSelectedYears = {};
+        let cachedData = [];
+let trialsData = [];
+let teachersData = [];
+let courseDates = {
+    start: '',
+    end: '',
+    password: 'koji1516',
+    courseName: '',
+    courses: [],
+    activeCourseId: ''
+};
+let openNewMakeupIds = {};
+let openSummerIds = {};
+let openTeacherCountsIds = {};
+let teacherSelectedYears = {};
         
         const timeSlots = ["17:00～", "18:10～", "19:20～", "20:30～", "13:40～", "14:50～", "16:00～", "17:30～", "18:40～", "19:50～", "10:00～", "11:10～", "13:00～", "14:10～", "15:20～"];
         const summerTimeSlots = ["10:00～", "11:10～", "13:00～", "14:10～", "15:20～", "17:00～", "18:10～", "19:20～", "20:30～"];
@@ -364,9 +374,118 @@
             alert("登録編集タブへ移動しました。内容を確認して保存してください。");
         };
 
+                        // 講習授業の日付が現在選択されている講習期間内かを判定する共通関数
+        const isWithinCoursePeriod = (date) => {
+            if (!date) return false;
+
+            const start = courseDates.start || '';
+            const end = courseDates.end || '';
+
+            if (start && date < start) return false;
+            if (end && date > end) return false;
+
+            return true;
+        };
+
+        // 保存済み講習を取得する
+        const getSavedCourses = () => {
+            return Array.isArray(courseDates.courses)
+                ? courseDates.courses
+                : [];
+        };
+
+        // 講習を選択する
+        window.selectCourse = async (courseId) => {
+            const courses = getSavedCourses();
+            const selectedCourse = courses.find(c => c.id === courseId);
+
+            if (!selectedCourse) return;
+
+            courseDates = {
+                ...courseDates,
+                courseName: selectedCourse.name || '',
+                start: selectedCourse.start || '',
+                end: selectedCourse.end || '',
+                activeCourseId: selectedCourse.id
+            };
+
+            // 選択中の講習も保存して、次回読み込み時も維持する
+            await setDoc(
+                doc(db, "system", "config"),
+                {
+                    activeCourseId: selectedCourse.id
+                },
+                {
+                    merge: true
+                }
+            );
+
+            render();
+        };
+
         window.saveCourseDates = async () => {
-            await setDoc(doc(db, "system", "config"), { start: document.getElementById('course-start').value, end: document.getElementById('course-end').value }, {merge:true});
-            alert("期間を保存しました");
+            const courseName = document.getElementById('course-name').value.trim();
+            const start = document.getElementById('course-start').value;
+            const end = document.getElementById('course-end').value;
+
+            if (!courseName) {
+                alert("講習名を入力してください");
+                return;
+            }
+
+            if (!start || !end) {
+                alert("講習開始日と終了日を入力してください");
+                return;
+            }
+
+            if (start > end) {
+                alert("講習開始日は終了日より前の日付を指定してください");
+                return;
+            }
+
+            const courses = getSavedCourses();
+
+            // 同じ講習名・同じ期間でも別の講習として保存できるよう、
+            // 保存するたびに新しいIDを作成する
+            const newCourse = {
+                id: `course_${Date.now()}`,
+                name: courseName,
+                start: start,
+                end: end
+            };
+
+            const updatedCourses = [
+                ...courses,
+                newCourse
+            ];
+
+            // 保存した講習を現在選択中の講習にする
+            courseDates = {
+                ...courseDates,
+                courseName: courseName,
+                start: start,
+                end: end,
+                courses: updatedCourses,
+                activeCourseId: newCourse.id
+            };
+
+            await setDoc(
+                doc(db, "system", "config"),
+                {
+                    courses: updatedCourses,
+                    activeCourseId: newCourse.id,
+                    courseName: courseName,
+                    start: start,
+                    end: end
+                },
+                {
+                    merge: true
+                }
+            );
+
+            render();
+
+            alert(`「${courseName}」を保存しました`);
         };
 
         window.openPasswordChangeModalFromAuth = () => {
@@ -430,11 +549,45 @@
             container.appendChild(div);
         };
 
-        window.saveSummer = async (id) => {
+                window.saveSummer = async (id) => {
             const container = document.getElementById(`sm-${id}`);
             const rows = Array.from(container.querySelectorAll('.sm-row'));
-            const sessions = rows.map(r => ({ date: r.querySelector('.s-date').value, time: r.querySelector('.s-time').value, sub: r.querySelector('.s-sub').value })).filter(r => r.date);
-            await updateDoc(doc(db, "students", id), { summerSessions: sessions });
+
+            // 現在表示しているのは講習期間内の授業だけなので、
+            // 保存時は期間外に既に登録されている授業を残したまま、
+            // 期間内の授業だけを画面入力内容で更新する。
+            const currentStudent = cachedData.find(s => s.id === id);
+            const allSessions = currentStudent ? (currentStudent.summerSessions || []) : [];
+
+            // 講習期間外の授業はそのまま残す
+            const outsideCourseSessions = allSessions.filter(sess => {
+                return !isWithinCoursePeriod(sess.date);
+            });
+
+            // 画面に表示されている講習期間内の授業だけを取得
+            const courseSessions = rows
+                .map(r => ({
+                    date: r.querySelector('.s-date').value,
+                    time: r.querySelector('.s-time').value,
+                    sub: r.querySelector('.s-sub').value
+                }))
+                .filter(sess => {
+                    return sess.date && isWithinCoursePeriod(sess.date);
+                });
+
+            // 期間外の既存データ ＋ 期間内の今回入力データ
+            const sessions = [
+                ...outsideCourseSessions,
+                ...courseSessions
+            ];
+
+            await updateDoc(
+                doc(db, "students", id),
+                {
+                    summerSessions: sessions
+                }
+            );
+
             alert("保存しました");
         };
 
@@ -1224,16 +1377,74 @@
             const teacherList = document.getElementById('teacher-list');
             
             studentList.innerHTML = ""; todayList.innerHTML = ""; trialList.innerHTML = ""; teacherList.innerHTML = "";
+                        const savedCourses = getSavedCourses();
+            const activeCourseId = courseDates.activeCourseId || '';
+
+            const courseOptionsHtml = savedCourses.length > 0
+                ? savedCourses.map(course => `
+                    <option value="${course.id}" ${course.id === activeCourseId ? 'selected' : ''}>
+                        ${course.name}（${course.start} ～ ${course.end}）
+                    </option>
+                `).join('')
+                : `<option value="">保存済み講習はありません</option>`;
+
             summerContainer.innerHTML = `
-                <div class="bg-slate-100 p-3 rounded-lg mb-4">
+                <div class="bg-slate-100 p-3 rounded-lg mb-4 space-y-2">
+
                     <h2 class="font-bold text-sm mb-2">講習期間設定</h2>
+
+                    <input
+                        type="text"
+                        id="course-name"
+                        class="input-styled !p-1 text-sm"
+                        placeholder="講習名（例：2026年夏期講習）"
+                        value="${courseDates.courseName || ''}"
+                    >
+
                     <div class="grid grid-cols-2 gap-2">
-                        <input type="date" id="course-start" class="input-styled !p-1 text-sm" value="${courseDates.start || ''}">
-                        <input type="date" id="course-end" class="input-styled !p-1 text-sm" value="${courseDates.end || ''}">
+                        <input
+                            type="date"
+                            id="course-start"
+                            class="input-styled !p-1 text-sm"
+                            value="${courseDates.start || ''}"
+                        >
+
+                        <input
+                            type="date"
+                            id="course-end"
+                            class="input-styled !p-1 text-sm"
+                            value="${courseDates.end || ''}"
+                        >
                     </div>
-                    <button onclick="saveCourseDates()" class="mt-2 w-full bg-slate-600 text-white py-1 rounded text-xs font-bold">期間を保存</button>
+
+                    <button
+                        onclick="saveCourseDates()"
+                        class="w-full bg-slate-600 text-white py-2 rounded text-xs font-bold"
+                    >
+                        講習を保存
+                    </button>
+
+                    <div class="pt-2 border-t border-slate-300">
+
+                        <div class="text-xs font-bold text-slate-600 mb-1">
+                            保存済み講習を選択
+                        </div>
+
+                        <select
+                            id="saved-course-select"
+                            class="input-styled !p-1 text-sm"
+                            onchange="selectCourse(this.value)"
+                        >
+                            ${courseOptionsHtml}
+                        </select>
+
+                    </div>
+
                 </div>
-                <div class="font-bold text-lg p-2 bg-slate-100 rounded-t">講習管理</div>
+
+                <div class="font-bold text-lg p-2 bg-slate-100 rounded-t">
+                    講習管理
+                </div>
             `;
             newMakeupList.innerHTML = "<div class='font-bold text-lg p-2 bg-slate-100 rounded-t'>振替予約一覧</div>"; 
             searchBox.innerHTML = '<option value="">名前を選択してください...</option>'; 
@@ -1285,26 +1496,122 @@
                 searchBox.innerHTML += `<option value="${s.id}">${s.name}</option>`;
                 rangeStudent.innerHTML += `<option value="${s.id}" ${s.id === currentSelectedRangeStudent ? 'selected' : ''}>${s.name}</option>`;
                 
-                let summerGroupDiv = document.createElement('div');
+                                let summerGroupDiv = document.createElement('div');
                 summerGroupDiv.className = "makeup-group";
+
                 let isSummerOpen = !!openSummerIds[s.id];
-                summerGroupDiv.innerHTML = `<div class="makeup-name-header" onclick="toggleSummerGroup('${s.id}')"><span>${s.name}</span><span class="text-xs text-blue-600 bg-white px-2 py-0.5 rounded-full border border-blue-200">${(s.summerSessions||[]).length}コマ ${isSummerOpen ? '▲' : '▼'}</span></div><div class="p-3 bg-white ${isSummerOpen ? '' : 'hidden'}" id="sm-${s.id}"></div>`;
+
+                // 講習管理タブでは、設定した講習期間内の授業だけを対象にする
+                const courseSessions = (s.summerSessions || []).filter(sess => {
+                    return isWithinCoursePeriod(sess.date);
+                });
+
+                // 氏名右側のコマ数も、講習期間内の授業数だけを表示
+                summerGroupDiv.innerHTML = `
+                    <div class="makeup-name-header" onclick="toggleSummerGroup('${s.id}')">
+                        <span>${s.name}</span>
+                        <span class="text-xs text-blue-600 bg-white px-2 py-0.5 rounded-full border border-blue-200">
+                            ${courseSessions.length}コマ ${isSummerOpen ? '▲' : '▼'}
+                        </span>
+                    </div>
+                    <div class="p-3 bg-white ${isSummerOpen ? '' : 'hidden'}" id="sm-${s.id}"></div>
+                `;
+
                 const container = summerGroupDiv.querySelector(`#sm-${s.id}`);
-                
-                if((s.summerSessions || []).length === 0) {
-                    container.innerHTML += `<div class="sm-row"><input type="date" class="input-styled sm-input s-date"><select class="input-styled sm-input s-time">${summerTimeSlots.map(t=>`<option>${t}</option>`).join('')}</select><select class="input-styled sm-input s-sub">${subjects.map(sub=>`<option>${sub}</option>`).join('')}</select></div>`;
+
+                // 講習期間内の授業が1件もない場合は、新規入力用の空行を1行表示
+                if (courseSessions.length === 0) {
+
+                    container.innerHTML += `
+                        <div class="sm-row">
+                            <input type="date" class="input-styled sm-input s-date">
+
+                            <select class="input-styled sm-input s-time">
+                                ${summerTimeSlots.map(t => `<option>${t}</option>`).join('')}
+                            </select>
+
+                            <select class="input-styled sm-input s-sub">
+                                ${subjects.map(sub => `<option>${sub}</option>`).join('')}
+                            </select>
+                        </div>
+                    `;
+
                 } else {
-                    (s.summerSessions || []).forEach((sess) => {
-                        container.innerHTML += `<div class="sm-row"><input type="date" value="${sess.date}" class="input-styled sm-input s-date"><select class="input-styled sm-input s-time">${summerTimeSlots.map(t=>`<option ${sess.time===t?'selected':''}>${t}</option>`).join('')}</select><select class="input-styled sm-input s-sub">${subjects.map(sub=>`<option ${sess.sub===sub?'selected':''}>${sub}</option>`).join('')}</select></div>`;
-                        
-                        if (sess.date === todayStr) {
-                            let tKey = sess.time;
-                            if (!timeGroups[tKey]) timeGroups[tKey] = { title: tKey + "の予定", events: [], timeVal: getTimeKey(tKey) };
-                            timeGroups[tKey].events.push({name: s.name, id: s.id, time: sess.time, sub: sess.sub + " 講習", attKey: `sm_${sess.date}_${sess.time}`, status: (s.attendance || {})[`sm_${sess.date}_${sess.time}`], isSummer: true});
-                        }
+
+                    // 講習管理タブの詳細は講習期間内の授業だけ表示
+                    courseSessions.forEach((sess) => {
+
+                        container.innerHTML += `
+                            <div class="sm-row">
+                                <input
+                                    type="date"
+                                    value="${sess.date}"
+                                    class="input-styled sm-input s-date"
+                                >
+
+                                <select class="input-styled sm-input s-time">
+                                    ${summerTimeSlots.map(t =>
+                                        `<option ${sess.time === t ? 'selected' : ''}>${t}</option>`
+                                    ).join('')}
+                                </select>
+
+                                <select class="input-styled sm-input s-sub">
+                                    ${subjects.map(sub =>
+                                        `<option ${sess.sub === sub ? 'selected' : ''}>${sub}</option>`
+                                    ).join('')}
+                                </select>
+                            </div>
+                        `;
+
                     });
                 }
-                container.innerHTML += `<div class="mt-3 flex gap-2 justify-end"><button onclick="addSummerRow('${s.id}')" class="text-xs bg-slate-500 text-white px-3 py-1.5 rounded">＋行</button><button onclick="saveSummer('${s.id}')" class="bg-blue-600 text-white px-4 py-1.5 rounded text-xs font-bold">保存</button></div>`;
+
+                // 予定タブ用のデータは期間で絞らない。
+                // s.summerSessions に登録されている全ての講習授業を使用する。
+                (s.summerSessions || []).forEach((sess) => {
+
+                    if (sess.date === todayStr) {
+
+                        let tKey = sess.time;
+
+                        if (!timeGroups[tKey]) {
+                            timeGroups[tKey] = {
+                                title: tKey + "の予定",
+                                events: [],
+                                timeVal: getTimeKey(tKey)
+                            };
+                        }
+
+                        timeGroups[tKey].events.push({
+                            name: s.name,
+                            id: s.id,
+                            time: sess.time,
+                            sub: sess.sub + " 講習",
+                            attKey: `sm_${sess.date}_${sess.time}`,
+                            status: (s.attendance || {})[`sm_${sess.date}_${sess.time}`],
+                            isSummer: true
+                        });
+                    }
+                });
+
+                container.innerHTML += `
+                    <div class="mt-3 flex gap-2 justify-end">
+                        <button
+                            onclick="addSummerRow('${s.id}')"
+                            class="text-xs bg-slate-500 text-white px-3 py-1.5 rounded"
+                        >
+                            ＋行
+                        </button>
+
+                        <button
+                            onclick="saveSummer('${s.id}')"
+                            class="bg-blue-600 text-white px-4 py-1.5 rounded text-xs font-bold"
+                        >
+                            保存
+                        </button>
+                    </div>
+                `;
+
                 summerContainer.appendChild(summerGroupDiv);
 
                 const regularAbsences = Object.keys(s.attendance || {}).filter(k => s.attendance[k] === '欠席' && !k.startsWith('makeup_') && !k.startsWith('sm_')).sort((a, b) => {
@@ -1731,7 +2038,47 @@
         
         document.getElementById('save-trial').onclick = async () => { await addDoc(collection(db, "trials"), { name: document.getElementById('trial-name').value, grade: document.getElementById('trial-grade').value, sub: document.getElementById('trial-sub').value, date: document.getElementById('trial-date').value, time: document.getElementById('trial-time').value, registered: false }); alert("体験予約を保存しました"); };
         document.querySelectorAll('nav button').forEach((btn, i) => { btn.onclick = () => { document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active')); document.querySelectorAll('.nav-btn').forEach(n => n.classList.remove('nav-active-tab')); document.querySelectorAll('.tab-content')[i].classList.add('active'); btn.classList.add('nav-active-tab'); }; }); 
-        onSnapshot(doc(db, "system", "config"), (doc) => { if(doc.exists()){ courseDates = doc.data(); const cs = document.getElementById('course-start'); const ce = document.getElementById('course-end'); if(cs) cs.value = courseDates.start || ''; if(ce) ce.value = courseDates.end || ''; render(); } });
+        onSnapshot(doc(db, "system", "config"), (doc) => {
+    if (doc.exists()) {
+
+        const data = doc.data();
+
+        courseDates = {
+            start: data.start || '',
+            end: data.end || '',
+            password: data.password || 'koji1516',
+            courseName: data.courseName || '',
+            courses: Array.isArray(data.courses) ? data.courses : [],
+            activeCourseId: data.activeCourseId || '',
+            slotTeachers: data.slotTeachers || {}
+        };
+
+        // 保存済み講習がある場合は、最後に選択されていた講習を
+        // 現在の講習期間として使用する
+        if (courseDates.activeCourseId && courseDates.courses.length > 0) {
+
+            const activeCourse = courseDates.courses.find(
+                c => c.id === courseDates.activeCourseId
+            );
+
+            if (activeCourse) {
+                courseDates.courseName = activeCourse.name || '';
+                courseDates.start = activeCourse.start || '';
+                courseDates.end = activeCourse.end || '';
+            }
+        }
+
+        const cs = document.getElementById('course-start');
+        const ce = document.getElementById('course-end');
+        const cn = document.getElementById('course-name');
+
+        if (cs) cs.value = courseDates.start || '';
+        if (ce) ce.value = courseDates.end || '';
+        if (cn) cn.value = courseDates.courseName || '';
+
+        render();
+    }
+});
         onSnapshot(collection(db, "students"), async (snap) => { cachedData = snap.docs.map(doc => ({id: doc.id, ...doc.data()})); render(); });
         onSnapshot(collection(db, "trials"), (snap) => { trialsData = snap.docs.map(doc => ({id: doc.id, ...doc.data()})); render(); });
         onSnapshot(collection(db, "teachers"), (snap) => { teachersData = snap.docs.map(doc => ({id: doc.id, ...doc.data()})); render(); });

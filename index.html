@@ -225,15 +225,65 @@
                 <div class="p-3 bg-slate-100 rounded-lg border space-y-3">
                     <h2 class="font-bold text-sm text-slate-700">講師登録・編集</h2>
                     <input type="hidden" id="teacher-id">
-                    <input type="text" id="teacher-name" placeholder="氏名" class="input-styled">
-                    <input type="text" id="teacher-tel" placeholder="電話番号" class="input-styled">
-                    
-                    <label class="text-xs font-bold text-slate-600">担当曜日・コマ (複数設定可能)</label>
-                    <div id="teacher-schedule-container" class="space-y-2"></div>
-                    <button type="button" id="add-teacher-schedule" class="w-full text-blue-600 border-2 border-blue-600 py-2 rounded text-xs font-bold hover:bg-blue-50">+ 担当枠を追加</button>
 
-                    <button id="save-teacher-btn" class="btn-main !p-3">講師を保存する</button>
-                    <button id="clear-teacher-btn" class="w-full text-slate-500 py-1 text-xs underline">新規入力へ</button>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+
+    <input
+        type="text"
+        id="teacher-name"
+        placeholder="講師名"
+        class="input-styled"
+    >
+
+    <input
+        type="number"
+        id="teacher-pay-rate"
+        placeholder="コマ給額（円）"
+        class="input-styled"
+        min="0"
+        step="1"
+    >
+
+    <input
+        type="date"
+        id="teacher-pay-start-date"
+        class="input-styled"
+        title="このコマ給の適用開始日"
+    >
+
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs text-slate-500 -mt-2">
+    <div></div>
+    <div>コマ給額（円）</div>
+    <div>適用開始日</div>
+</div>
+
+<input
+    type="text"
+    id="teacher-tel"
+    placeholder="電話番号"
+    class="input-styled"
+>
+>
+
+<label class="text-xs font-bold text-slate-600">担当曜日・コマ (複数設定可能)</label>
+<div id="teacher-schedule-container" class="space-y-2"></div>
+
+<button
+    type="button"
+    id="add-teacher-schedule"
+    class="w-full text-blue-600 border-2 border-blue-600 py-2 rounded text-xs font-bold hover:bg-blue-50">
+    + 担当枠を追加
+</button>
+
+<button id="save-teacher-btn" class="btn-main !p-3">
+    講師を保存する
+</button>
+
+<button id="clear-teacher-btn" class="w-full text-slate-500 py-1 text-xs underline">
+    新規入力へ
+</button>
                 </div>
                 <div class="font-bold text-lg p-2 bg-slate-100 rounded-t">登録講師一覧</div>
                 <div id="teacher-list" class="space-y-2"></div>
@@ -522,7 +572,7 @@ let teacherSelectedYears = {};
         };
 
         document.getElementById('auth-btn').onclick = () => {
-            const inputPass = document.getElementById('auth-password').value;
+            const inputPass = document.getElementById('auth-password').value.trim();
             const correctPass = courseDates.password || 'koji1516';
             if (inputPass === correctPass) {
                 document.getElementById('auth-modal').classList.add('hidden');
@@ -604,52 +654,299 @@ let teacherSelectedYears = {};
         };
 
         // 講師の保存処理
-        document.getElementById('save-teacher-btn').onclick = async () => {
-            const id = document.getElementById('teacher-id').value.trim();
-            const name = document.getElementById('teacher-name').value.trim();
-            const tel = document.getElementById('teacher-tel').value.trim();
-            const schedules = Array.from(document.querySelectorAll('.teacher-schedule-row')).map(row => ({
-                day: row.querySelector('.t-day').value,
-                time: row.querySelector('.t-time').value
-            }));
+document.getElementById('save-teacher-btn').onclick = async () => {
 
-            if(!name) {
-                alert("講師の氏名を入力してください");
-                return;
-            }
+    const id =
+        document.getElementById('teacher-id').value.trim();
 
-            const teacherData = { name, tel, schedules };
-            if(id) {
-                await updateDoc(doc(db, "teachers", id), teacherData);
-            } else {
-                await addDoc(collection(db, "teachers"), teacherData);
-            }
-            alert("講師情報を保存しました");
-            document.getElementById('clear-teacher-btn').click();
-        };
+    const name =
+        document.getElementById('teacher-name').value.trim();
+
+    const tel =
+        document.getElementById('teacher-tel').value.trim();
+
+    const payRateInput =
+        document.getElementById('teacher-pay-rate').value.trim();
+
+    const payRateStartDate =
+        document.getElementById('teacher-pay-start-date').value.trim();
+
+    const schedules =
+        Array.from(
+            document.querySelectorAll('.teacher-schedule-row')
+        ).map(row => ({
+            day: row.querySelector('.t-day').value,
+            time: row.querySelector('.t-time').value
+        }));
+
+    // 氏名チェック
+    if(!name) {
+        alert("講師の氏名を入力してください");
+        return;
+    }
+
+    // コマ給額のチェック
+    let payRate = null;
+
+    if(payRateInput !== "") {
+
+        payRate = Number(payRateInput);
+
+        if(
+            !Number.isFinite(payRate) ||
+            payRate < 0
+        ) {
+            alert("コマ給額を正しく入力してください");
+            return;
+        }
+    }
+
+    // コマ給額を入力した場合は適用開始日も必須
+    if(
+        payRate !== null &&
+        !payRateStartDate
+    ) {
+        alert("コマ給の適用開始日を入力してください");
+        return;
+    }
+
+    // 既存講師を取得
+    let existingTeacher = null;
+
+    if(id) {
+        existingTeacher =
+            teachersData.find(
+                t => t.id === id
+            ) || null;
+    }
+
+    // 給与履歴
+    let payRateHistory = [];
+
+    if(
+        existingTeacher &&
+        Array.isArray(existingTeacher.payRateHistory)
+    ) {
+        payRateHistory =
+            [...existingTeacher.payRateHistory];
+    }
+
+    // 古いデータに履歴がない場合、
+    // 現在のコマ給を履歴へ移す
+    if(
+        payRateHistory.length === 0 &&
+        existingTeacher &&
+        existingTeacher.payRate !== undefined &&
+        existingTeacher.payRate !== null &&
+        existingTeacher.payRateStartDate
+    ) {
+
+        payRateHistory.push({
+            rate: Number(existingTeacher.payRate),
+            startDate:
+                existingTeacher.payRateStartDate
+        });
+    }
+
+    // 新しいコマ給を履歴へ追加
+    if(
+        payRate !== null &&
+        payRateStartDate
+    ) {
+
+        const existingHistoryIndex =
+            payRateHistory.findIndex(
+                item =>
+                    item.startDate ===
+                    payRateStartDate
+            );
+
+        if(existingHistoryIndex >= 0) {
+
+            // 同じ適用開始日の給料を変更
+            payRateHistory[
+                existingHistoryIndex
+            ] = {
+                rate: payRate,
+                startDate: payRateStartDate
+            };
+
+        } else {
+
+            // 新しい給料履歴を追加
+            payRateHistory.push({
+                rate: payRate,
+                startDate: payRateStartDate
+            });
+        }
+    }
+
+    // 新しい適用開始日が上になるように並べる
+    payRateHistory.sort(
+        (a, b) =>
+            b.startDate.localeCompare(
+                a.startDate
+            )
+    );
+
+    // 現在のコマ給
+    let currentPayRate = null;
+
+    let currentPayRateStartDate = "";
+
+    if(payRateHistory.length > 0) {
+
+        currentPayRate =
+            Number(
+                payRateHistory[0].rate || 0
+            );
+
+        currentPayRateStartDate =
+            payRateHistory[0].startDate || "";
+    }
+
+    // Firestoreへ保存するデータ
+    const teacherData = {
+
+        name,
+
+        tel,
+
+        schedules,
+
+        // 現在のコマ給
+        payRate: currentPayRate,
+
+        // 現在のコマ給の適用開始日
+        payRateStartDate:
+            currentPayRateStartDate,
+
+        // コマ給の変更履歴
+        payRateHistory
+
+    };
+
+    // 更新
+    if(id) {
+
+        await updateDoc(
+            doc(db, "teachers", id),
+            teacherData
+        );
+
+    // 新規登録
+    } else {
+
+        await addDoc(
+            collection(db, "teachers"),
+            teacherData
+        );
+    }
+
+    alert("講師情報を保存しました");
+
+    document
+        .getElementById('clear-teacher-btn')
+        .click();
+};
 
         document.getElementById('clear-teacher-btn').onclick = () => {
-            document.getElementById('teacher-id').value = "";
-            document.getElementById('teacher-name').value = "";
-            document.getElementById('teacher-tel').value = "";
-            document.getElementById('teacher-schedule-container').innerHTML = "";
-            document.getElementById('teacher-schedule-container').appendChild(createTeacherScheduleRow());
-        };
 
-        window.editTeacher = (id, name, tel, schedulesJSON) => {
-            document.getElementById('teacher-id').value = id;
-            document.getElementById('teacher-name').value = name;
-            document.getElementById('teacher-tel').value = tel;
-            const container = document.getElementById('teacher-schedule-container');
-            container.innerHTML = "";
-            let schedules = [];
-            try { schedules = JSON.parse(schedulesJSON); } catch(e) {}
-            if(!schedules || schedules.length === 0) {
-                container.appendChild(createTeacherScheduleRow());
-            } else {
-                schedules.forEach(sc => container.appendChild(createTeacherScheduleRow(sc.day, sc.time)));
-            }
-        };
+    // 講師IDをクリア
+    document.getElementById('teacher-id').value = "";
+
+    // 講師名をクリア
+    document.getElementById('teacher-name').value = "";
+
+    // コマ給額をクリア
+    document.getElementById('teacher-pay-rate').value = "";
+
+    // 適用開始日をクリア
+    document.getElementById('teacher-pay-start-date').value = "";
+
+    // 電話番号をクリア
+    document.getElementById('teacher-tel').value = "";
+
+    // 担当スケジュールを初期化
+    document.getElementById(
+        'teacher-schedule-container'
+    ).innerHTML = "";
+
+    document.getElementById(
+        'teacher-schedule-container'
+    ).appendChild(
+        createTeacherScheduleRow()
+    );
+};
+
+        window.editTeacher = (
+    id,
+    name,
+    tel,
+    schedulesJSON,
+    payRate,
+    payRateStartDate
+) => {
+
+    document.getElementById('teacher-id').value =
+        id || "";
+
+    document.getElementById('teacher-name').value =
+        name || "";
+
+    document.getElementById('teacher-tel').value =
+        tel || "";
+
+    // コマ給額
+    document.getElementById('teacher-pay-rate').value =
+        payRate !== undefined &&
+        payRate !== null &&
+        payRate !== ""
+            ? payRate
+            : "";
+
+    // 適用開始日
+    document.getElementById('teacher-pay-start-date').value =
+        payRateStartDate || "";
+
+    const container =
+        document.getElementById(
+            'teacher-schedule-container'
+        );
+
+    container.innerHTML = "";
+
+    let schedules = [];
+
+    try {
+        schedules = JSON.parse(schedulesJSON);
+    } catch(e) {
+        schedules = [];
+    }
+
+    if(
+        !schedules ||
+        schedules.length === 0
+    ) {
+
+        container.appendChild(
+            createTeacherScheduleRow()
+        );
+
+    } else {
+
+        schedules.forEach(sc => {
+
+            container.appendChild(
+                createTeacherScheduleRow(
+                    sc.day,
+                    sc.time
+                )
+            );
+
+        });
+    }
+};
 
         window.deleteTeacher = async (id) => {
             if(!confirm("この講師データを削除しますか？")) return;
@@ -705,6 +1002,54 @@ let teacherSelectedYears = {};
         };
 
         // 月ごとの講師コマ回数計算関数（指定された年を対象にする）
+        // 講師の適用コマ給を取得する
+window.getTeacherPayRate = (teacher, targetDate) => {
+
+    // 給与履歴を取得
+    let history = Array.isArray(teacher.payRateHistory)
+        ? teacher.payRateHistory
+            .filter(item => item && item.startDate !== undefined && item.startDate !== null)
+            .map(item => ({
+                rate: Number(item.rate ?? item.payRate ?? 0),
+                startDate: String(item.startDate)
+            }))
+        : [];
+
+    // 現在のコマ給も履歴として必ず補完する
+    // （過去の保存データや履歴が不完全な場合への対策）
+    if (
+        teacher.payRate !== undefined &&
+        teacher.payRate !== null &&
+        teacher.payRateStartDate
+    ) {
+        const currentRate = Number(teacher.payRate);
+        const currentStart = String(teacher.payRateStartDate);
+
+        const exists = history.some(item =>
+            item.startDate === currentStart
+        );
+
+        if (!exists && Number.isFinite(currentRate)) {
+            history.push({
+                rate: currentRate,
+                startDate: currentStart
+            });
+        }
+    }
+
+    // 適用開始日の新しい順
+    history.sort((a, b) =>
+        b.startDate.localeCompare(a.startDate)
+    );
+
+    // 授業日に適用されるコマ給を取得
+    const applicable = history.find(item =>
+        item.startDate <= targetDate &&
+        Number.isFinite(item.rate)
+    );
+
+    return applicable ? applicable.rate : 0;
+};
         window.calculateTeacherCounts = (teacherName, targetYear) => {
             const year = targetYear || new Date().getFullYear();
             const startDate = new Date(`${year}-01-01`);
@@ -783,8 +1128,39 @@ let teacherSelectedYears = {};
                     }
 
                     if (assignedTeacher === teacherName) {
-                        monthlyCounts[monthKey] = (monthlyCounts[monthKey] || 0) + 1;
-                    }
+
+    // 同名講師が複数登録されている場合でも、
+    // コマ給が登録されている講師を優先して取得する
+    const teacher =
+        teachersData.find(tch =>
+            tch.name === teacherName &&
+            (
+                (Array.isArray(tch.payRateHistory) && tch.payRateHistory.length > 0) ||
+                (tch.payRate !== undefined && tch.payRate !== null && tch.payRate !== "")
+            )
+        ) ||
+        teachersData.find(tch => tch.name === teacherName);
+
+    let rate = 0;
+
+    if (teacher) {
+        rate = window.getTeacherPayRate(
+            teacher,
+            dashDateStr
+        );
+    }
+
+    if (!monthlyCounts[monthKey]) {
+        monthlyCounts[monthKey] = {
+            count: 0,
+            salary: 0
+        };
+    }
+
+    monthlyCounts[monthKey].count += 1;
+
+    monthlyCounts[monthKey].salary += rate;
+}
                 });
 
                 curr.setDate(curr.getDate() + 1);
@@ -816,14 +1192,78 @@ let teacherSelectedYears = {};
             `;
 
             if (sortedMonths.length === 0) {
-                html += `<div class="text-slate-500">該当するコマはありません。</div>`;
-            } else {
-                html += `<div class="grid grid-cols-2 sm:grid-cols-3 gap-2">`;
-                sortedMonths.forEach(m => {
-                    html += `<div class="bg-white p-1.5 border rounded flex justify-between items-center"><span>${m}</span><span class="font-bold text-blue-600">${counts[m]}コマ</span></div>`;
-                });
-                html += `</div>`;
-            }
+
+    html += `
+        <div class="text-slate-500">
+            該当するコマはありません。
+        </div>
+    `;
+
+} else {
+
+    html += `
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+    `;
+
+    sortedMonths.forEach(m => {
+
+        const count = counts[m]?.count || 0;
+        const salary = counts[m]?.salary || 0;
+
+        html += `
+            <div class="bg-white p-2 border rounded">
+
+                <div class="flex justify-between items-center">
+                    <span class="font-bold text-slate-700">
+                        ${m}
+                    </span>
+
+                    <span class="font-bold text-blue-600">
+                        ${count}コマ
+                    </span>
+                </div>
+
+                <div class="text-right text-emerald-700 font-bold mt-1">
+                    ${salary.toLocaleString()}円
+                </div>
+
+            </div>
+        `;
+    });
+
+    html += `</div>`;
+
+    // 年間合計
+    const totalCount = sortedMonths.reduce(
+        (sum, m) => sum + (counts[m]?.count || 0),
+        0
+    );
+
+    const totalSalary = sortedMonths.reduce(
+        (sum, m) => sum + (counts[m]?.salary || 0),
+        0
+    );
+
+    html += `
+        <div class="mt-3 p-2 bg-slate-700 text-white rounded">
+
+            <div class="flex justify-between">
+                <span>年間担当コマ数</span>
+                <strong>
+                    ${totalCount}コマ
+                </strong>
+            </div>
+
+            <div class="flex justify-between mt-1">
+                <span>年間給与</span>
+                <strong>
+                    ${totalSalary.toLocaleString()}円
+                </strong>
+            </div>
+
+        </div>
+    `;
+}
             container.innerHTML = html;
         };
 
@@ -1452,43 +1892,139 @@ let teacherSelectedYears = {};
             rangeStudent.innerHTML = '<option value="">生徒を選択...</option>';
             
             teachersData.forEach(tch => {
-                let schedules = tch.schedules || [];
-                if (schedules.length === 0 && tch.day && tch.time) {
-                    schedules = [{ day: tch.day, time: tch.time }];
-                }
-                const schedulesText = schedules.map(sc => `${sc.day}曜 ${sc.time}`).join(' / ') || '担当なし';
-                const schedulesJSON = JSON.stringify(schedules).replace(/"/g, '&quot;');
-                const isOpenCounts = !!openTeacherCountsIds[tch.id];
 
-                teacherList.innerHTML += `
-                    <div class="p-3 border rounded bg-white text-sm space-y-2">
-                        <div class="flex justify-between items-center">
-                            <div>
-                                <strong>${tch.name}</strong> (${tch.tel || 'TELなし'})<br>
-                                <span class="text-xs text-slate-500">担当: ${schedulesText}</span>
-                            </div>
-                            <div class="flex gap-1 flex-wrap justify-end">
-                                <button onclick="toggleTeacherCounts('${tch.id}', '${tch.name}')" class="bg-emerald-600 text-white px-2.5 py-1 rounded text-xs font-bold">月別コマ数</button>
-                                <button onclick="editTeacher('${tch.id}', '${tch.name}', '${tch.tel || ''}', '${schedulesJSON}')" class="bg-blue-600 text-white px-2.5 py-1 rounded text-xs font-bold">編集</button>
-                                <button onclick="deleteTeacher('${tch.id}')" class="bg-red-500 text-white px-2.5 py-1 rounded text-xs font-bold">削除</button>
-                            </div>
-                        </div>
-                        <div id="teacher-counts-${tch.id}" class="${isOpenCounts ? '' : 'hidden'} pt-2 border-t text-xs bg-slate-50 p-2 rounded"></div>
-                    </div>
-                `;
-                
-                // 再描画時にもし開いていた場合は自動的に内容を再構築する
-                if (isOpenCounts) {
-                    setTimeout(() => {
-                        const countsContainer = document.getElementById(`teacher-counts-${tch.id}`);
-                        if (countsContainer) {
-                            const selectedY = teacherSelectedYears[tch.id] || new Date().getFullYear();
-                            teacherSelectedYears[tch.id] = selectedY;
-                            window.renderTeacherCountsContent(tch.id, tch.name, selectedY);
-                        }
-                    }, 0);
-                }
-            });
+    let schedules = tch.schedules || [];
+
+    if (
+        schedules.length === 0 &&
+        tch.day &&
+        tch.time
+    ) {
+        schedules = [
+            {
+                day: tch.day,
+                time: tch.time
+            }
+        ];
+    }
+
+    const schedulesText =
+        schedules
+            .map(sc => `${sc.day}曜 ${sc.time}`)
+            .join(' / ') || '担当なし';
+
+    const schedulesJSON =
+        JSON.stringify(schedules)
+            .replace(/"/g, '&quot;');
+
+    const isOpenCounts =
+        !!openTeacherCountsIds[tch.id];
+
+    teacherList.innerHTML += `
+        <div class="p-3 border rounded bg-white text-sm space-y-2">
+
+            <div class="flex justify-between items-center">
+
+                <div>
+
+                    <strong>${tch.name}</strong>
+                    (${tch.tel || 'TELなし'})<br>
+
+                    <span class="text-xs text-slate-500">
+                        担当: ${schedulesText}
+                    </span>
+
+                    ${
+                        tch.payRate !== undefined &&
+                        tch.payRate !== null
+                            ? `
+                                <br>
+                                <span class="text-xs text-emerald-700">
+                                    コマ給:
+                                    ${Number(tch.payRate).toLocaleString()}円
+                                    ${
+                                        tch.payRateStartDate
+                                            ? `（${tch.payRateStartDate}～）`
+                                            : ''
+                                    }
+                                </span>
+                              `
+                            : ''
+                    }
+
+                </div>
+
+                <div class="flex gap-1 flex-wrap justify-end">
+
+                    <button
+                        onclick="toggleTeacherCounts('${tch.id}', '${tch.name}')"
+                        class="bg-emerald-600 text-white px-2.5 py-1 rounded text-xs font-bold"
+                    >
+                        月別コマ数
+                    </button>
+
+                    <button
+                        onclick="editTeacher(
+                            '${tch.id}',
+                            '${tch.name}',
+                            '${tch.tel || ''}',
+                            '${schedulesJSON}',
+                            '${tch.payRate !== undefined && tch.payRate !== null ? tch.payRate : ''}',
+                            '${tch.payRateStartDate || ''}'
+                        )"
+                        class="bg-blue-600 text-white px-2.5 py-1 rounded text-xs font-bold"
+                    >
+                        編集
+                    </button>
+
+                    <button
+                        onclick="deleteTeacher('${tch.id}')"
+                        class="bg-red-500 text-white px-2.5 py-1 rounded text-xs font-bold"
+                    >
+                        削除
+                    </button>
+
+                </div>
+
+            </div>
+
+            <div
+                id="teacher-counts-${tch.id}"
+                class="${isOpenCounts ? '' : 'hidden'} pt-2 border-t text-xs bg-slate-50 p-2 rounded"
+            ></div>
+
+        </div>
+    `;
+
+    // 再描画時にもし開いていた場合は自動的に内容を再構築する
+    if (isOpenCounts) {
+
+        setTimeout(() => {
+
+            const countsContainer =
+                document.getElementById(
+                    `teacher-counts-${tch.id}`
+                );
+
+            if (countsContainer) {
+
+                const selectedY =
+                    teacherSelectedYears[tch.id] ||
+                    new Date().getFullYear();
+
+                teacherSelectedYears[tch.id] =
+                    selectedY;
+
+                window.renderTeacherCountsContent(
+                    tch.id,
+                    tch.name,
+                    selectedY
+                );
+            }
+
+        }, 0);
+    }
+});
 
             let timeGroups = {}; 
             

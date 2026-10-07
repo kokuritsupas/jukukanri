@@ -1563,14 +1563,15 @@ window.getTeacherPayRate = (teacher, targetDate) => {
                         if (sc.day === dObj.dayOfWeek) {
                             const origAttKey = `${dObj.dashDateStr}_${sc.time}`;
                             const attKey = origAttKey;
-                            if (attendanceMap[attKey] !== '無' && attendanceMap[attKey] !== '欠席') {
+                            if (attendanceMap[attKey] !== '無') {
+                                const isAbsent = (attendanceMap[attKey] === '欠席');
                                 const effectiveTime = timeChanges[origAttKey] ? timeChanges[origAttKey] : sc.time;
                                 let subText = sc.sub;
                                 let colorClass = "text-black"; 
                                 if (subText.includes("OL")) {
                                     colorClass = "text-red-600 font-bold";
                                 }
-                                matrix[effectiveTime][dObj.dateStr].push({ name: s.name, sub: subText, colorClass: colorClass });
+                                matrix[effectiveTime][dObj.dateStr].push({ name: s.name, sub: subText, colorClass: colorClass, isAbsent });
                             }
                         }
                     });
@@ -1578,13 +1579,14 @@ window.getTeacherPayRate = (teacher, targetDate) => {
                     (s.summerSessions || []).forEach(sess => {
                         if (sess.date === dObj.dashDateStr) {
                             const attKey = `sm_${sess.date}_${sess.time}`;
-                            if (attendanceMap[attKey] !== '無' && attendanceMap[attKey] !== '欠席') {
+                            if (attendanceMap[attKey] !== '無') {
+                                const isAbsent = (attendanceMap[attKey] === '欠席');
                                 let subText = sess.sub + " 講習";
                                 let colorClass = "text-blue-600 font-bold";
                                 if (subText.includes("OL")) {
                                     colorClass = "text-red-600 font-bold";
                                 }
-                                matrix[sess.time][dObj.dateStr].push({ name: s.name, sub: subText, colorClass: colorClass });
+                                matrix[sess.time][dObj.dateStr].push({ name: s.name, sub: subText, colorClass: colorClass, isAbsent });
                             }
                         }
                     });
@@ -1592,7 +1594,8 @@ window.getTeacherPayRate = (teacher, targetDate) => {
                     (s.makeupReservations || []).forEach(r => {
                         if (r.date === dObj.dashDateStr) {
                             const attKey = `makeup_${s.id}_${r.date}_${r.time}`;
-                            if (attendanceMap[attKey] !== '無' && attendanceMap[attKey] !== '欠席') {
+                            if (attendanceMap[attKey] !== '無') {
+                                const isAbsent = (attendanceMap[attKey] === '欠席');
                                 let origSub = r.subject || "算数";
                                 if (!r.subject && r.absKey) {
                                     const absTime = r.absKey.split('_')[1];
@@ -1604,7 +1607,7 @@ window.getTeacherPayRate = (teacher, targetDate) => {
                                 if (subText.includes("OL")) {
                                     colorClass = "text-red-600 font-bold";
                                 }
-                                matrix[r.time][dObj.dateStr].push({ name: s.name, sub: subText, colorClass: colorClass });
+                                matrix[r.time][dObj.dateStr].push({ name: s.name, sub: subText, colorClass: colorClass, isAbsent });
                             }
                         }
                     });
@@ -1685,8 +1688,9 @@ window.getTeacherPayRate = (teacher, targetDate) => {
                             weeklyNameHtml = `<span>${rawWeeklyName}</span>`;
                         }
 
+                        let absentStyle = ev.isAbsent ? 'border-2 border-red-500 bg-red-50' : 'border border-slate-200 bg-slate-50';
                         html += `
-                            <div class="mb-1.5 p-1 rounded bg-slate-50 border border-slate-200 ${ev.colorClass}" style="font-size: 11px; line-height: 1.4; display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                            <div class="mb-1.5 p-1 rounded ${absentStyle} ${ev.colorClass}" style="font-size: 11px; line-height: 1.4; display: flex; align-items: center; justify-content: space-between; gap: 4px;">
                                 <div class="font-bold" style="white-space: nowrap; overflow: visible; max-width: 55%;">${weeklyNameHtml}</div>
                                 <div class="font-normal" style="white-space: nowrap; overflow: visible; max-width: 45%; text-align: right;">${ev.sub}</div>
                             </div>
